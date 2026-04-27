@@ -665,7 +665,7 @@ Stack: [Strands Agents SDK](https://strandsagents.com/), [Amazon Bedrock AgentCo
 
 ### De demo a producción
 
-Esta implementación es un **demo técnico** optimizada para clarificar conceptos y facilitar el onboarding. Para llevarla a un **Minimum Lovable Product (MLP) productivo** que soporte cientos de APMs y datos corporativos vivos, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — guía de evolución en fases que explica cómo incorporar ingesta desde un warehouse corporativo, data lake con Apache Iceberg, separación hot/warm path, caché de KPIs con ElastiCache Redis y una capa semántica para el agente.
+Esta implementación es un **demo técnico** optimizado para clarificar conceptos y facilitar el onboarding. Para llevarla a un **Minimum Lovable Product (MLP) productivo** que soporte cientos de APMs con datos corporativos vivos, ver [`docs/road-to-prod.md`](docs/road-to-prod.md) — caso de estudio del camino de evolución para un laboratorio farmacéutico real, con ingesta desde 3 fuentes (CRM interno + CloseUp + IQVIA), data lake con Apache Iceberg, los 3 carriles de respuesta (instantáneo / conversacional / análisis profundo async), capa semántica para el agente y plan por fases con costos estimados.
 
 ### Referencias
 

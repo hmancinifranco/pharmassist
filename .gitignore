@@ -5,6 +5,7 @@
 .env.genia-backup
 frontend/.env
 frontend/.env.local
+problematica
 
 # === Python ===
 __pycache__/
