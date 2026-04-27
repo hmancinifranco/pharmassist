@@ -293,7 +293,7 @@ Para ver todos los targets del Makefile: `make help`. Para destruir todo: `make 
 
 ### Prerequisitos
 
-Antes de arrancar, necesitás:
+Antes de arrancar, necesitas:
 
 | Herramienta | Versión | Comando |
 |---|---|---|
@@ -327,17 +327,13 @@ El usuario `Peccy` viene cargado con:
 
 ### Preguntas sugeridas (chat)
 
-1. "Dame un brief sobre el Dr. Martín Kreutzer" — combina CRM + búsqueda web + historial + minutas
+1. "Dame un brief sobre la Dra. Florencia Peralta" — combina CRM + búsqueda web + historial + minutas
 2. "Se me liberó un hueco, ¿a quién puedo visitar?" — ranking por SLA + ventas + visitas pendientes
 3. "¿Qué productos están cayendo en ventas en mi zona?" — análisis YoY con datos reales
 4. "¿Cuántos médicos tengo asignados?" — consulta rápida al CRM
 5. "¿Qué médicos tengo en Belgrano?" — filtro por zona
 6. "¿Cuáles son mis visitas de hoy?" — agenda planificada
-7. "Preparame talking points para visitar al Dr. Rodrigo Estévez que es Neurólogo" — generación contextual
-
-### Demo de Kiro (prompt extendido para mostrar MCPs)
-
-> "Armá una presentación speech de PharmAssist como archivo markdown. Incluí: para qué sirve, quién es el usuario target, funcionalidades principales, arquitectura técnica, y una estimación de costos diarios en AWS asumiendo 200 APMs activos que realizan entre 6 y 10 visitas médicas por día (promedio 8). Derivá los supuestos de uso (consultas al chat, sesiones de voz, notas de voz, requests al dashboard) a partir de ese volumen de visitas. Usá el MCP de pricing oficial de AWS para los precios."
+7. "Prepárame talking points para visitar al Dr. Rodrigo Estévez que es Neurólogo" — generación contextual
 
 ---
 
@@ -376,7 +372,7 @@ TEXT_AGENT_ARN=$AGENTCORE_AGENT_ARN python agent.py
 
 ## Setup manual detallado
 
-Si preferís no usar el Makefile o querés entender qué hace cada paso, podés correrlos manualmente:
+Si prefieres no usar el Makefile o quieres entender qué hace cada paso, puedes correrlos manualmente:
 
 ```bash
 # 1. Variables de entorno
@@ -536,29 +532,29 @@ cdk destroy PharmAssistStack --profile $AWS_PROFILE --force
 
 ## Troubleshooting
 
-- **`cdk deploy` falla con "Need to bootstrap"** → Ejecutá `make cdk-bootstrap` primero.
-- **`cdk deploy` o `agentcore deploy` fallan con "Docker daemon not running"** → Abrí Docker Desktop y esperá a que termine de arrancar.
-- **`source .env` rompe con "command not found"** → Alguna variable tiene un espacio sin quotear. Ponela entre comillas: `DEMO_USER_APM_ID="Demo APM"`.
+- **`cdk deploy` falla con "Need to bootstrap"** → Ejecuta `make cdk-bootstrap` primero.
+- **`cdk deploy` o `agentcore deploy` fallan con "Docker daemon not running"** → Abre Docker Desktop y espera a que termine de arrancar.
+- **`source .env` rompe con "command not found"** → Alguna variable tiene un espacio sin quotear. Ponla entre comillas: `DEMO_USER_APM_ID="Demo APM"`.
 - **`make env-from-outputs` falla** → El stack debe estar deployado (`make deploy-infra` primero).
-- **`agentcore deploy` falla con "Agent X was not found"** → El `.bedrock_agentcore.yaml` local apunta a una cuenta AWS distinta. Los scripts detectan esto y lo limpian, pero si corrés `agentcore` manualmente borrá `.bedrock_agentcore.yaml` y `.bedrock_agentcore/` antes de deployar en otra cuenta.
+- **`agentcore deploy` falla con "Agent X was not found"** → El `.bedrock_agentcore.yaml` local apunta a una cuenta AWS distinta. Los scripts detectan esto y lo limpian, pero si ejecutas `agentcore` manualmente borra `.bedrock_agentcore.yaml` y `.bedrock_agentcore/` antes de deployar en otra cuenta.
 - **Text Agent y BidiAgent colisionan en AgentCore** → El BidiAgent usa `--name pharmassist_bidi` explícito para no chocar con el Text Agent (default `agent`).
-- **AgentCore responde "AccessDenied" al consultar DynamoDB** → El script `deploy-text-agent.sh` invoca automáticamente `grant-agent-ddb-access.sh`. Si lo corriste manual, ejecutá `bash scripts/grant-agent-ddb-access.sh`.
-- **Login falla** → Verificá que `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_USER_POOL_ID` en `.env` coinciden con los outputs del CDK (correr `make env-from-outputs`). Y que el usuario existe (`make seed` o `make seed-peccy`).
-- **WebSocket no conecta** → Verificá `VITE_WS_URL` en `.env` y que la Lambda Proxy tiene `AGENTCORE_AGENT_ARN` configurado (redeploy del stack con `make deploy-infra` después de deployar el Text Agent).
-- **Modo voz no conecta** → Verificá que `VITE_IDENTITY_POOL_ID` y `VITE_BIDIAGENT_AGENT_ARN` estén en `.env`. El Identity Pool debe tener el User Pool como proveedor y el rol autenticado debe tener `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`.
-- **Frontend muestra "undefined" en URLs** → El build de Vite no leyó `.env`. Asegurate que `frontend/.env` existe (el Makefile hace el symlink automático).
+- **AgentCore responde "AccessDenied" al consultar DynamoDB** → El script `deploy-text-agent.sh` invoca automáticamente `grant-agent-ddb-access.sh`. Si lo ejecutaste manual, corre `bash scripts/grant-agent-ddb-access.sh`.
+- **Login falla** → Verifica que `VITE_COGNITO_CLIENT_ID` y `VITE_COGNITO_USER_POOL_ID` en `.env` coinciden con los outputs del CDK (ejecuta `make env-from-outputs`). Y que el usuario existe (`make seed` o `make seed-peccy`).
+- **WebSocket no conecta** → Verifica `VITE_WS_URL` en `.env` y que la Lambda Proxy tiene `AGENTCORE_AGENT_ARN` configurado (redeploy del stack con `make deploy-infra` después de deployar el Text Agent).
+- **Modo voz no conecta** → Verifica que `VITE_IDENTITY_POOL_ID` y `VITE_BIDIAGENT_AGENT_ARN` estén en `.env`. El Identity Pool debe tener el User Pool como proveedor y el rol autenticado debe tener `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`.
+- **Frontend muestra "undefined" en URLs** → El build de Vite no leyó `.env`. Asegúrate que `frontend/.env` existe (el Makefile hace el symlink automático).
 - **Web search (DDGS) falla** → Puede ser rate-limit temporal. El brief se genera igual con datos del CRM.
 - **`agentcore destroy` preserva la memoria** → El CLI marca como "pre-existing" a memorias que detecta al deployar. El target `make destroy` ejecuta `scripts/cleanup-orphan-memories.sh` al final para limpiarlas.
-- **Buckets `bedrock-agentcore-codebuild-sources-<account>-<region>`** → Son compartidos por todos los agentes de esa cuenta. `make destroy` NO los borra para no romper otros deploys. Si querés borrarlos, hacelo manual con `aws s3 rb s3://<bucket> --force`.
+- **Buckets `bedrock-agentcore-codebuild-sources-<account>-<region>`** → Son compartidos por todos los agentes de esa cuenta. `make destroy` NO los borra para no romper otros deploys. Si quieres borrarlos, hazlo manual con `aws s3 rb s3://<bucket> --force`.
 
 ---
 
 ## Seguridad y licencia
 
-- Nunca commitees tu `.env` — usá `.env.example` como template.
+- Nunca hagas commit de tu `.env` — usa `.env.example` como template.
 - Los CSVs son **datos sintéticos**. No representan información real de médicos o pacientes.
-- Reportá vulnerabilidades según [SECURITY.md](SECURITY.md).
-- Para producción: rotá passwords, habilitá MFA en Cognito, revisá IAM al mínimo necesario.
+- Reporta vulnerabilidades según [SECURITY.md](SECURITY.md).
+- Para producción: rota passwords, habilita MFA en Cognito, revisa IAM al mínimo necesario.
 
 Distribuido bajo la licencia MIT. Ver [LICENSE](LICENSE).
 
@@ -657,7 +653,7 @@ Para una fuerza de ventas con **200 APMs activos**: **~$1.650/mes** total (~$55/
 - La **primera vez** que se deploya cada AgentCore agent, el CLI crea un bucket S3 (`bedrock-agentcore-codebuild-sources-<account>-<region>`) compartido entre todos tus agentes. Su costo de almacenamiento es despreciable (~$0.01/mes).
 - **Free tier**: 60 min/mes gratis de Transcribe durante los primeros 12 meses, y 10.000 MAUs gratis en Cognito Essentials — aplicables al cálculo.
 
-> Para una estimación precisa para tu caso particular, usá el [AWS Pricing Calculator](https://calculator.aws/).
+> Para una estimación precisa para tu caso particular, usa el [AWS Pricing Calculator](https://calculator.aws/).
 
 ---
 
