@@ -1,0 +1,54 @@
+# === Entorno (NUNCA commitear secrets) ===
+.env
+.env.local
+.env.*.local
+.env.genia-backup
+frontend/.env
+frontend/.env.local
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# === Node / Frontend ===
+node_modules/
+frontend/dist/
+
+# === CDK ===
+cdk.out/
+# cdk.context.json contiene AWS account IDs — no publicar
+infrastructure/cdk.context.json
+
+# === AWS / AgentCore ===
+# .bedrock_agentcore.yaml contiene ARNs con account IDs y paths absolutos locales
+.bedrock_agentcore.yaml
+.bedrock_agentcore/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# === Datos sensibles en producción ===
+# (para dev los CSVs sintéticos se mantienen en el repo)
+# data/*.csv
+
+# === Referencias locales y artefactos no parte del MVP ===
+reference-sample/
+reference-mui-dashboard/
+voice-server/
+
+# === Artefactos de MCP diagrams en la raíz (deben ir a generated-diagrams/) ===
+/pharmassist_*.png
+/*.dot
+
+# === Validación local de diagramas Mermaid ===
+.tmp-validate/

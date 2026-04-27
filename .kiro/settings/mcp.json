@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "markitdown": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "markitdown-mcp-npx"
+      ],
+      "disabled": true,
+      "autoApprove": []
+    },
+    "mui-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@mui/mcp@latest"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "useMuiDocs",
+        "fetchDocs",
+        "fetchDocs"
+      ]
+    }
+  }
+}

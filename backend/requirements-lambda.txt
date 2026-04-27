@@ -1,0 +1,10 @@
+fastapi
+mangum
+pydantic>=2.0
+python-dotenv
+pandas
+boto3
+strands-agents
+strands-agents-tools
+ddgs
+lxml
