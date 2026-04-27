@@ -663,6 +663,10 @@ Construido con [Kiro](https://kiro.dev) — el IDE autónomo con AI que acompañ
 
 Stack: [Strands Agents SDK](https://strandsagents.com/), [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/), [MUI v6](https://mui.com/) y [AWS CDK](https://aws.amazon.com/cdk/). Los datos de la demo son sintéticos.
 
+### De demo a producción
+
+Esta implementación es un **demo técnico** optimizada para clarificar conceptos y facilitar el onboarding. Para llevarla a un **Minimum Lovable Product (MLP) productivo** que soporte cientos de APMs y datos corporativos vivos, ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — guía de evolución en fases que explica cómo incorporar ingesta desde un warehouse corporativo, data lake con Apache Iceberg, separación hot/warm path, caché de KPIs con ElastiCache Redis y una capa semántica para el agente.
+
 ### Referencias
 
 La implementación del modo voz (BidiAgent + Nova Sonic + conexión SigV4 directa desde el browser) está basada en el sample oficial de AWS:
