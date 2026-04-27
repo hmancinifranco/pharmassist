@@ -52,3 +52,7 @@ voice-server/
 
 # === Validación local de diagramas Mermaid ===
 .tmp-validate/
+
+# === Exportables locales para stakeholders (no se commitean) ===
+docs/*.html
+docs/*.pdf
