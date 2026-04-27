@@ -36,6 +36,7 @@
 - [Destruir todo](#destruir-todo)
 - [Troubleshooting](#troubleshooting)
 - [Seguridad y licencia](#seguridad-y-licencia)
+- [Estimación de costos](#estimación-de-costos)
 
 ---
 
@@ -560,6 +561,103 @@ cdk destroy PharmAssistStack --profile $AWS_PROFILE --force
 - Para producción: rotá passwords, habilitá MFA en Cognito, revisá IAM al mínimo necesario.
 
 Distribuido bajo la licencia MIT. Ver [LICENSE](LICENSE).
+
+---
+
+## Estimación de costos
+
+Cálculo de referencia para **1 APM activo** usando PharmAssist de forma típica. Todos los precios son **on-demand en us-east-1** al 27-abr-2026 — precios en otras regiones varían (ver notas al final).
+
+### Supuestos de uso (1 APM × 22 días hábiles/mes)
+
+Derivados de un APM que visita **8 médicos/día** (~176 visitas/mes):
+
+| Interacción | Volumen diario | Volumen mensual | Justificación |
+|---|---|---|---|
+| Logins | 1 | 22 | Cognito InitiateAuth al inicio del día |
+| Page loads al dashboard | 10 | 220 | Login + 9 navegaciones durante la jornada |
+| Endpoints dashboard (REST) | 30 | 660 | 3 cards × 10 loads: `/visits-today`, `/birthdays`, `/sla-alerts` |
+| Consultas al chat (texto) | 5 | 110 | Brief antes + follow-up después + 2-3 consultas generales |
+| Tool calls al Text Agent | 15 | 330 | Promedio 3 tool calls por consulta (CRM + visitas + ventas) |
+| Sesiones de voz | 2 | 44 | Uso opcional del modo voz, ~2 min c/u |
+| Minutos de voz (Nova Sonic) | 4 | 88 | 2 sesiones × 2 min |
+| Minutas de audio grabadas | 4 | 88 | 50% de las visitas generan nota de voz post-visita |
+| Minutos de audio (Transcribe) | 8 | 176 | 4 minutas × 2 min promedio |
+| WebSocket messages | ~175 | ~3.850 | 5 prompts + ~30 SSE chunks de respuesta c/u + tool events |
+| AgentCore Runtime (CPU activa) | ~290 s | ~6.380 s | ~10s por consulta texto + 240s por 4 min de voz (Nova Sonic) |
+
+### Precios unitarios (us-east-1, consultados 27-abr-2026)
+
+| Servicio | Unidad | Precio |
+|---|---|---|
+| Bedrock — Claude Opus 4.6 (input) | 1M tokens | $5.00 |
+| Bedrock — Claude Opus 4.6 (output) | 1M tokens | $25.00 |
+| Bedrock — Nova Sonic 2 (input speech) | 1M tokens | $0.33 |
+| Bedrock — Nova Sonic 2 (output speech) | 1M tokens | $2.75 |
+| Bedrock — Nova 2 Lite (summarize) | 1M input / 1M output | [pricing](https://aws.amazon.com/bedrock/pricing/) |
+| Bedrock AgentCore Runtime (CPU) | 1 vCPU-hour | $0.0895 |
+| Bedrock AgentCore Runtime (memoria) | 1 GB-hour | $0.00945 |
+| Bedrock AgentCore STM Memory | 1K new events | $0.25 |
+| Amazon Transcribe (batch, tier 1) | 1 min audio | $0.024 |
+| DynamoDB on-demand | 1M read/write request units | $1.25 / $1.25 |
+| Lambda (requests + compute) | 1M req + 1 GB-s | $0.20 + $0.0000166667 |
+| API Gateway HTTP | 1M requests | $1.00 |
+| API Gateway WebSocket | 1M messages / 1M min conn. | $1.00 / $0.25 |
+| CloudFront (transfer) | 1 GB | $0.085 |
+| S3 Standard | 1 GB-mes | $0.023 |
+| Cognito User Pool | 1 MAU | $0.00 (primeros 10K gratis) |
+
+### Cálculo por servicio (1 APM / mes)
+
+Tamaño típico de un prompt al Text Agent: **~3.000 tokens input** (system prompt + historial STM + user prompt + tool results) y **~400 tokens output**.
+
+| Servicio | Cálculo | Costo mensual |
+|---|---|---|
+| **Bedrock — Claude Opus 4.6 (chat)** | 110 consultas × 3.000 tokens input = 330K → $1.65<br>110 consultas × 400 tokens output = 44K → $1.10 | **$2.75** |
+| **Bedrock — Nova Sonic 2 (voz)** | 88 min × ~1.500 input tokens/min × 1.000 → 132K → $0.04<br>88 min × ~4.000 output tokens/min → 352K → $0.97 | **$1.01** |
+| **Bedrock — Nova 2 Lite (minutas)** | 88 minutas × 1.500 input tokens + 200 output → 132K in + 17.6K out | **~$0.03** |
+| **Bedrock AgentCore Runtime** | ~6.380 s × 0.5 vCPU ÷ 3.600 = 0.886 vCPU-hours × $0.0895 = $0.08<br>+ memoria ~1 GB × 1.77 h × $0.00945 = $0.02 | **~$0.10** |
+| **Bedrock AgentCore STM Memory** | ~110 consultas × 2 eventos = 220 events/mes / 1.000 × $0.25 | **~$0.06** |
+| **Amazon Transcribe** | 176 min × $0.024 | **$4.22** |
+| **DynamoDB on-demand** | ~660 reads dashboard + 330 reads tools + 88 writes ≈ 1.100 RRU + 100 WRU / 1M × $1.25 | **<$0.01** |
+| **AWS Lambda** | ~4.500 invocaciones (API + WS + Transcribe + Summarize) × 500ms × 512MB | **<$0.05** |
+| **API Gateway HTTP** | 660 requests / 1M × $1.00 | **<$0.01** |
+| **API Gateway WebSocket** | ~3.850 messages + ~660 min conexión / 1M | **<$0.01** |
+| **S3 + CloudFront (frontend)** | ~50 MB SPA servido ~220 veces + ~90 MB audio uploads | **~$0.03** |
+| **Amazon Cognito** | 1 MAU dentro de los 10.000 gratis | **$0.00** |
+| **TOTAL** | | **~$8.26 / APM / mes** |
+
+### Desglose por componente
+
+| Componente | % del total | Observación |
+|---|---|---|
+| Amazon Transcribe | 51% | El pipeline de minutas de voz es el mayor driver de costo |
+| Claude Opus 4.6 (chat) | 33% | Bajaría ~80% con Claude Sonnet 4.6 o ~95% con Nova 2 Lite |
+| Nova Sonic 2 (voz) | 12% | Directamente proporcional al tiempo de conversación |
+| AgentCore Runtime + Memory | 2% | Serverless, solo cobra uso activo |
+| Resto (Lambda, API GW, DDB, S3/CF, Cognito) | <2% | Infraestructura serverless escala sin costos fijos |
+
+### Escalado
+
+Para una fuerza de ventas con **200 APMs activos**: **~$1.650/mes** total (~$55/día). Los cálculos escalan casi linealmente porque la arquitectura es 100% serverless y sin costos fijos de infraestructura.
+
+### Optimizaciones disponibles
+
+- **Migrar el agente a Claude Sonnet 4.6** ($3/M input, $15/M output): reduce Bedrock ~40% del costo total
+- **Migrar el agente a Nova 2 Lite**: reduce Bedrock ~95% del costo total, impacto mínimo en calidad para queries factual
+- **Desactivar minutas de voz** o restringirlas a visitas priorizadas: elimina el 51% del costo (Transcribe)
+- **Batch inference** para generación de briefs async: 50% de descuento sobre inferencia on-demand
+- **Provisioned Throughput** para workloads predecibles: descuentos hasta 50% en Bedrock
+
+### Notas y exclusiones
+
+- Precios **on-demand en us-east-1** consultados el 27-abr-2026. Otras regiones varían ±20-30% (ej. Sydney y Sao Paulo son más caras).
+- Bedrock usa inference profiles con prefijo `us.` — el routing puede agregar pequeño sobrecosto cross-region.
+- **No incluye**: data transfer entre servicios AWS intra-región (despreciable), costo de desarrollo/mantenimiento, CloudWatch logs, X-Ray traces, ni WAF.
+- La **primera vez** que se deploya cada AgentCore agent, el CLI crea un bucket S3 (`bedrock-agentcore-codebuild-sources-<account>-<region>`) compartido entre todos tus agentes. Su costo de almacenamiento es despreciable (~$0.01/mes).
+- **Free tier**: 60 min/mes gratis de Transcribe durante los primeros 12 meses, y 10.000 MAUs gratis en Cognito Essentials — aplicables al cálculo.
+
+> Para una estimación precisa para tu caso particular, usá el [AWS Pricing Calculator](https://calculator.aws/).
 
 ---
 
