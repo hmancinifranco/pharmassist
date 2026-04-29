@@ -1,480 +1,560 @@
-# Caso de estudio: De Demo a MLP — PharmAssist para la industria farmacéutica
+# De demo a MLP — PharmAssist para la industria farmacéutica
 
-> Cómo convertir la demo actual de PharmAssist en un Minimum Lovable Product productivo capaz de responder preguntas de alto valor para Agentes de Propaganda Médica (APMs), cruzando múltiples fuentes de datos corporativas y externas de la industria farmacéutica, con latencias aceptables y una experiencia de usuario moderna.
+> Análisis de las decisiones necesarias para llevar la demo actual de PharmAssist a un producto productivo en un laboratorio real. El documento se apoya en patrones de referencia publicados por AWS (text-to-SQL con Amazon Bedrock, GraphRAG con Neptune Analytics, Redshift MCP Server) y deja explícitas las decisiones que dependen de mediciones pendientes contra datos reales del cliente.
 
 ## Índice
 
 - [El caso de estudio](#el-caso-de-estudio)
 - [Las 3 fuentes de datos de la industria pharma](#las-3-fuentes-de-datos-de-la-industria-pharma)
+- [Cómo se cruzan hoy estas fuentes](#cómo-se-cruzan-hoy-estas-fuentes)
 - [Las preguntas que generan valor real](#las-preguntas-que-generan-valor-real)
-- [Por qué la demo actual no alcanza](#por-qué-la-demo-actual-no-alcanza)
-- [Principios de diseño del MLP](#principios-de-diseño-del-mlp)
-- [Arquitectura objetivo](#arquitectura-objetivo)
-- [Los 3 carriles de respuesta](#los-3-carriles-de-respuesta)
-- [Ingesta: warehouse externo → AWS](#ingesta-warehouse-externo--aws)
-- [Almacenamiento: data lake con 3 dominios](#almacenamiento-data-lake-con-3-dominios)
-- [Capa semántica: el agente entiende el negocio](#capa-semántica-el-agente-entiende-el-negocio)
-- [Experiencia async para análisis profundo](#experiencia-async-para-análisis-profundo)
-- [Latencias esperadas por tipo de pregunta](#latencias-esperadas-por-tipo-de-pregunta)
+- [Por qué la demo actual requiere evolución](#por-qué-la-demo-actual-requiere-evolución)
+- [Posicionamiento frente a Amazon Quick Suite](#posicionamiento-frente-a-amazon-quick-suite)
+- [Patrón de referencia: text-to-SQL con Amazon Bedrock](#patrón-de-referencia-text-to-sql-con-amazon-bedrock)
+- [Arquitectura propuesta](#arquitectura-propuesta)
+- [Ingesta y almacenamiento](#ingesta-y-almacenamiento)
+- [La capa semántica: GraphRAG con Neptune Analytics](#la-capa-semántica-graphrag-con-neptune-analytics)
+- [Latencias esperadas y experiencia de usuario](#latencias-esperadas-y-experiencia-de-usuario)
+- [Spike de validación antes de comprometer arquitectura](#spike-de-validación-antes-de-comprometer-arquitectura)
 - [Plan de evolución por fases](#plan-de-evolución-por-fases)
 - [Costos estimados](#costos-estimados)
+- [Riesgos abiertos](#riesgos-abiertos)
+- [Resumen](#resumen)
+- [Referencias](#referencias)
+
 
 ---
 
 ## El caso de estudio
 
-La demo actual de PharmAssist usa un atajo didáctico: tres CSVs sintéticos (CRM, visitas, ventas) cargados directamente en DynamoDB, con un único APM (Peccy) y 12 médicos. Sirve para validar la experiencia de usuario, el stack de agentes, el modo voz con Nova Sonic y la integración con AgentCore.
+La demo actual de PharmAssist utiliza un atajo didáctico: tres CSVs sintéticos (CRM, visitas, ventas) cargados en DynamoDB, con un único APM (Peccy) y 12 médicos. Sirve para validar la experiencia de usuario, el stack de agentes con Strands, el modo voz con Nova Sonic y la integración con Amazon Bedrock AgentCore.
 
-En un entorno productivo real de la industria farmacéutica, el escenario cambia en múltiples dimensiones simultáneamente. Este documento describe cómo evolucionar el diseño para soportar un laboratorio real con cientos de APMs, datos corporativos vivos consolidados desde múltiples fuentes, y preguntas de negocio que hoy ningún tablero resuelve.
+Un entorno productivo real cambia la ecuación en varias dimensiones simultáneamente. Este documento explora las decisiones que habría que tomar para llegar a ese escenario, apoyándose en patrones de referencia publicados por AWS y dejando explícitas las variables que dependen de mediciones contra datos reales del cliente.
 
 ### Perfil del caso
 
 - **Industria**: laboratorio farmacéutico argentino de mediano o gran porte
-- **Usuarios**: 200–500 APMs (visitadores médicos) distribuidos geográficamente
-- **Escenario**: los APMs preparan su agenda del día siguiente desde sus notebooks, en horario laboral o nocturno. Expectativa de datos a día vencido (batch nocturno aceptable)
-- **Fuentes de datos existentes**: 3 warehouses/datasets externos a AWS, cada uno en su propia plataforma (típicamente SQL Server, Synapse, Databricks o similar)
-- **Patrón de uso**: mixto. El APM consulta datos puntuales (quién, dónde, cuándo), hace preguntas analíticas (rankings, tendencias, comparativos) y ocasionalmente pide análisis profundos multi-fuente ("qué médicos crecen en prescripción de mis productos foco y los estoy visitando poco")
+- **Usuarios**: 200–500 APMs (Agentes de Propaganda Médica) distribuidos geográficamente
+- **Escenario típico**: los APMs preparan su agenda desde notebooks, en horario laboral o nocturno. Los datos a día vencido (batch nocturno) son aceptables.
+- **Fuentes de datos existentes**: 3 datasets externos a AWS, cada uno en su plataforma (típicamente SQL Server, Synapse, Databricks o similar)
+- **Patrón de uso**: mixto. Consultas puntuales (quién, dónde, cuándo), preguntas analíticas (rankings, tendencias) y análisis más complejos que cruzan las 3 fuentes.
 
-### Objetivo del MLP
+### Qué se quiere lograr
 
-Construir un asistente conversacional que:
+Un asistente conversacional que le permita al APM **hablar con sus datos** — no con un catálogo limitado de preguntas pre-cocinadas. El diferencial frente a un dashboard tradicional es justamente esa libertad: el APM pregunta lo que necesita en lenguaje natural y el agente arma la consulta sobre los datos reales.
 
-1. Responda preguntas **rápidas** (<500 ms data side) con la misma velocidad que un dashboard
-2. Responda preguntas **conversacionales** (2–5 segundos end-to-end) con análisis ad-hoc sobre datos frescos
-3. Entregue **análisis profundos** cross-source (15–60 segundos) sin romper la experiencia del APM — vía experiencia asincrónica con notificación
-4. Conserve la libertad del LLM de "hablar con los datos" — **no** pre-cocina respuestas
-5. Tenga costo operativo predecible y escale linealmente con usuarios
+Esto implica tres compromisos de diseño:
+
+1. El agente debe **generar SQL dinámico** sobre los datasets reales, no elegir entre queries pre-definidas
+2. La latencia debe ser **tolerable para una conversación** (objetivo: la mayoría de las preguntas en menos de 5 segundos end-to-end)
+3. El costo operativo debe ser **predecible y escalar linealmente** con los usuarios
 
 
 ---
 
 ## Las 3 fuentes de datos de la industria pharma
 
-En la industria farmacéutica argentina (y latinoamericana) los laboratorios trabajan con una combinación típica de **1 fuente interna + 2 fuentes externas estándar de la industria**. Cada una aporta un tipo distinto de información y los datos solo cobran sentido cuando se cruzan entre sí.
+En la industria farmacéutica argentina y latinoamericana los laboratorios trabajan con una combinación típica de **1 fuente interna + 2 fuentes externas estándar de la industria**. Cada una aporta un tipo distinto de información y los datos cobran pleno sentido cuando se cruzan.
 
 ### Fuente 1 — Sistema interno (CRM + gestión de visitas)
 
-Es el sistema propio del laboratorio. Guarda todo lo que el laboratorio conoce y controla:
+Es el sistema propio del laboratorio. Guarda lo que el laboratorio conoce y controla:
 
 - **Cartera médica**: qué APM atiende a qué médicos
 - **Agenda de visitas**: planificadas, realizadas, con tiempos y tipos
 - **Muestras entregadas**: qué producto, qué cantidad, lote, fecha
-- **Productos foco del ciclo actual**: qué promoción se está empujando por línea/región
-- **Estructura del producto**: familia, línea, categoría (foco/hiperfoco), ciclos de promoción, grillas
-- **Perfil del médico**: datos personales, especialidad, hobbies, matrícula
+- **Productos foco del ciclo actual**: qué se está empujando por línea/región
+- **Estructura del producto**: familia, línea, categoría (foco/hiperfoco), ciclos, grillas
+- **Perfil del médico**: datos personales, especialidad, matrícula
 
-**Tamaño típico**: tablas pequeñas-medianas (miles a decenas de miles de rows por tabla). Schema normalizado con decenas de tablas relacionadas. Cambios diarios.
+**Tamaño típico**: tablas pequeñas-medianas (miles a decenas de miles de filas). Schema normalizado con decenas de tablas. Cambios diarios.
 
 ### Fuente 2 — Prescripciones (CloseUp / CUP)
 
-[CloseUp](https://www.closeupsolutions.com/) es un proveedor externo estándar en pharma latinoamericana. Vende datasets de **prescripciones médicas** capturadas en farmacias. Es la única forma que tiene un laboratorio de saber qué recetan los médicos — incluido qué productos de competidores recetan.
+[CloseUp](https://www.closeupsolutions.com/) es un proveedor externo estándar en pharma latinoamericana. Comercializa datasets de **prescripciones médicas** capturadas en farmacias. Es la vía que tiene un laboratorio para conocer qué recetan los médicos, incluido qué productos de competidores recetan.
 
 Contiene:
 
-- Tabla de **prescripciones** (fact table muy grande: decenas o centenas de millones de rows históricas)
-- Maestros de **médicos con identificador propio** (CDGMED), distinto del identificador interno del laboratorio
+- Tabla de **prescripciones** (fact table grande: decenas a centenas de millones de filas históricas)
+- Maestros de **médicos con identificador propio** (`CDGMED`), distinto del interno del laboratorio
 - Maestros de **mercados** (agrupaciones de productos competidores en una misma categoría terapéutica)
-- Tabla de **visitados/no visitados** por representante
 
-**Tamaño típico**: fact table de prescripciones en el orden de los GB-TB. Schema dimensional (star schema clásico). Actualización mensual o quincenal.
+**Tamaño típico**: fact table en el orden de GB a TB. Schema dimensional. Actualización mensual o quincenal.
 
 ### Fuente 3 — Ventas de mercado (IQVIA)
 
-[IQVIA](https://www.iqvia.com/) es el proveedor global dominante de datos de mercado farmacéutico. Vende datasets de **ventas a farmacias y distribuidoras**, agregados por producto, droga, clase terapéutica, laboratorio, período y geografía.
+[IQVIA](https://www.iqvia.com/) es el proveedor global dominante de datos de mercado. Comercializa datasets de **ventas a farmacias y distribuidoras**, agregados por producto, droga, clase terapéutica, laboratorio, período y geografía.
 
 Contiene:
 
-- Fact table de **ventas valorizadas** (`fact_mercado_valor`) con unidades, dosis, valor en ARS y USD
-- Dimensiones estándar: **droga, forma farmacéutica, presentación, laboratorio, clase terapéutica, combinación, período**
-- Relaciones entre presentaciones y drogas/formas para poder agregar a distintos niveles
+- Fact table de **ventas valorizadas** con unidades, dosis, valor en ARS y USD
+- Dimensiones estándar: droga, forma farmacéutica, presentación, laboratorio, clase terapéutica, período
 
-**Tamaño típico**: fact table grande (cientos de millones de rows). Schema dimensional puro. Actualización mensual.
+**Tamaño típico**: fact table grande (cientos de millones de filas). Schema dimensional. Actualización mensual.
 
-### El desafío: las claves no coinciden entre fuentes
 
-Las 3 fuentes **no comparten identificadores de productos ni de médicos**. Cada una usa su propia codificación:
+---
 
-- **Productos**: código interno del laboratorio (SKU propio) vs código CUP (de CloseUp) vs código EAN-11 o idProducto (de IQVIA)
-- **Médicos**: id interno del CRM del laboratorio vs CDGMED de CloseUp (no hay intersección en IQVIA porque IQVIA no tiene nivel médico)
+## Cómo se cruzan hoy estas fuentes
 
-Para cruzar las 3 fuentes existen **tablas maestras de integración** (el típico `maestro_integrador_producto` y `maestro_medicos`) que mapean los IDs entre sí. **Estas tablas maestras son críticas** — sin ellas, ninguna pregunta cross-source es posible.
+Este es uno de los puntos más subestimados de cualquier proyecto pharma: **las 3 fuentes no comparten identificadores de productos ni de médicos**. Cruzarlas no es un detalle técnico — es un proceso operativo que requiere trabajo humano continuo.
+
+### El problema
+
+- **Productos**: el laboratorio utiliza su SKU interno. CloseUp utiliza un código propio (`codigo_marca`). IQVIA utiliza EAN-11 o `idProducto`. Los tres sistemas fueron diseñados independientemente.
+- **Médicos**: el CRM interno utiliza un ID propio. CloseUp utiliza `CDGMED`. IQVIA directamente **no tiene nivel médico** (sus datos agregan a nivel producto × geografía × período).
+- **Geografías**: cada fuente puede utilizar su propia segmentación de regiones, ciudades o zonas.
+
+### Los tres mecanismos que se utilizan en la práctica
+
+#### 1. Tablas maestras de integración mantenidas manualmente (dominante)
+
+Cada laboratorio mantiene tablas de mapeo con un equipo interno:
+
+- **`maestro_integrador_producto`**: mapea SKU interno ↔ código CUP ↔ código IQVIA. Se actualiza cuando:
+  - El laboratorio lanza un producto nuevo
+  - CloseUp o IQVIA agregan una presentación
+  - Cambia un EAN
+
+- **`maestro_medicos`**: mapea ID interno del CRM ↔ `CDGMED` de CloseUp. Es el más complejo:
+  - CloseUp tiene médicos que el laboratorio no conoce (no son cartera)
+  - El laboratorio tiene médicos que CloseUp no captura (baja prescripción)
+  - La intersección se construye con matching heurístico: matrícula nacional cuando existe, o (nombre + apellido + especialidad + ciudad), con validación humana.
+
+**La realidad operativa**: estos maestros tienen **cobertura típica del 70-85%**. Un 15-30% de productos y médicos puede quedar sin mapeo — existen en una fuente pero no están vinculados a las otras.
+
+#### 2. Matching determinístico por EAN / GTIN (productos)
+
+Cuando el código de barras existe y coincide entre las fuentes, el cruce es directo. Funciona bien para productos propios con EAN consistente. Presenta dificultades cuando:
+
+- Un producto tiene múltiples presentaciones con distintos EANs
+- CloseUp agrega a nivel "marca" y IQVIA a nivel "presentación"
+- Productos de competidores: puede faltar EAN en el maestro interno
+
+#### 3. Matching fuzzy + humano (médicos sin matrícula)
+
+La matrícula nacional es el ID ideal, aunque:
+
+- CloseUp la tiene en aproximadamente 60-70% de los registros
+- El CRM interno a veces registra matrícula provincial, no nacional
+- Cuando no hay MN, el matching se realiza por (nombre normalizado + apellido + especialidad + provincia), con revisión manual. Tasa de falsos positivos típica: 3-8%.
+
+### Qué implica esto para el agente y el proyecto
+
+- **Las tablas maestras son un recurso del cliente, no algo que se construye desde cero en el proyecto**. Al inicio corresponde confirmar:
+  - Si el cliente ya las tiene mantenidas
+  - Cuál es la cobertura real (% de productos y médicos mapeados)
+  - Con qué frecuencia se actualizan
+  - Quién es el dueño operativo de mantenerlas
+- **Si el cliente no tiene maestros establecidos**, existe una fase previa de construcción (semanas de trabajo con su equipo de datos). Esto impacta el timeline del proyecto y conviene dimensionarlo desde el inicio.
+- **El agente debe ser transparente respecto a los huecos**. Cuando responde "hay 47 médicos con prescripciones en el mercado X", conviene que también pueda comunicar "de los 62 médicos de la cartera, 15 no están mapeados en la tabla integradora, por lo que no se incluyeron en el análisis".
+- **La capa semántica debe documentar las rutas de cruce explícitamente** para que el LLM no infiera joins sobre columnas que solo parecen equivalentes. Este es un riesgo real: los LLMs tienden a asumir que `doctor_id` y `CDGMED` representan la misma entidad si los nombres sugieren similitud.
 
 
 ---
 
 ## Las preguntas que generan valor real
 
-Los APMs hacen preguntas de **3 niveles de valor muy distintos**. Diseñar bien el sistema empieza por entender esa diferencia.
+Los APMs hacen preguntas de **3 niveles de complejidad distintos**. Diseñar bien el sistema comienza por entender esa diferencia.
 
-### Preguntas de bajo valor (un dashboard las resuelve)
+### Preguntas operativas (un dashboard las resuelve)
 
-Preguntas operativas, puntuales, con una sola fuente de datos. Hoy están en tableros estáticos que el APM consulta antes de salir. No son el diferencial del agente, pero **sí tienen que responder rápido** porque son las más frecuentes.
+Preguntas puntuales, con una sola fuente de datos. Hoy están en tableros estáticos que el APM consulta antes de salir. No son el diferencial del agente, pero **es importante que respondan rápido** porque son las más frecuentes.
 
-Ejemplos del patrón:
+Ejemplos:
 
-- *"¿Cuáles son mis objetivos de visita este mes?"*
-- *"¿A qué médicos todavía no visité en el ciclo actual?"*
-- *"¿Cuándo fue la última visita al Dr. X?"*
-- *"¿Qué promocioné en la última visita al Dr. X?"*
+- "¿Cuáles son mis objetivos de visita este mes?"
+- "¿A qué médicos todavía no visité en el ciclo actual?"
+- "¿Cuándo fue la última visita al Dr. X?"
+- "¿Qué promocioné en la última visita al Dr. X?"
 
 **Fuentes involucradas**: solo el CRM interno del laboratorio.
 **Patrón**: lookup por ID o filtro simple sobre cartera.
-**Latencia esperada**: <2 segundos end-to-end.
 **Frecuencia**: múltiples veces por día por APM.
 
-### Preguntas de valor medio (el APM intuye la respuesta)
+### Preguntas de rankings y agregaciones
 
-Preguntas donde el APM ya tiene cierta noción de la respuesta pero quiere confirmarla con datos, o donde quiere ver un ranking ordenado. Siguen siendo operativas pero agregan agregaciones.
+Preguntas donde el APM quiere confirmar una intuición con datos, o ver un ranking ordenado. Agregan agregaciones sobre volúmenes grandes.
 
-Ejemplos del patrón:
+Ejemplos:
 
-- *"¿Cuáles son los médicos que visito con más/menos frecuencia?"*
-- *"¿Cuáles son los 5 productos que más prescribe el Dr. X?"*
-- *"¿Cuáles son los 5 productos de mi laboratorio que más prescribe el Dr. X?"*
+- "¿Cuáles son los médicos que visito con más o menos frecuencia?"
+- "¿Cuáles son los 5 productos que más prescribe el Dr. X?"
+- "¿Cuáles son los 5 productos de mi laboratorio que más prescribe el Dr. X?"
 
 **Fuentes involucradas**: CRM interno y/o prescripciones (CloseUp).
-**Patrón**: agregación con group by + order + limit, típicamente acotada a un médico o un APM.
-**Latencia esperada**: 2–5 segundos end-to-end.
+**Patrón**: agregación con group by + order + limit, acotada a un médico o APM.
 **Frecuencia**: varias veces por semana.
 
-### Preguntas de gran valor (el agente muestra lo que ningún dashboard puede)
+### Preguntas analíticas cross-source
 
-Esta es la categoría donde el agente **justifica su existencia**. Son preguntas analíticas complejas que cruzan las 3 fuentes, requieren combinar prescripciones + cartera + productos foco + ventas de mercado, y devuelven insights accionables que hoy ningún APM puede obtener por sí mismo.
+Esta es la categoría donde el agente **justifica su existencia**. Preguntas que cruzan las 3 fuentes, requieren combinar prescripciones + cartera + productos foco + ventas de mercado, y devuelven insights accionables que hoy ningún dashboard puede dar.
 
-Ejemplos del patrón:
+Ejemplos:
 
-- *"Recomendame a qué médicos debería visitar según sus prescripciones y mis productos foco"* — cruza CRM interno (cartera + foco) con CloseUp (prescripciones) y la tabla maestra de productos
-- *"¿Qué médicos vienen creciendo en prescripción de mis productos foco y los estoy visitando poco?"* — cruza frecuencia de visitas (CRM interno) con evolución trimestral de prescripciones (CloseUp)
-- *"¿A qué médicos debería visitar primero para crecer con el producto X?"* — ranking sobre cartera cruzado con market share y evolución del médico
-- *"¿En qué productos de mi laboratorio tengo Evolución Trimestral negativa en unidades, tomando todos los mercados que trabajo?"* — cruza mercados del APM (CRM interno) con ventas IQVIA
-- *"De los medicamentos que le promociono / no le promociono al Dr. X, ¿cuál es el que más prescribe?"* — cruza agenda (CRM interno) con prescripciones (CloseUp)
+- "Recomendame a qué médicos visitar según sus prescripciones y mis productos foco"
+- "¿Qué médicos vienen creciendo en prescripción de mis productos foco y los estoy visitando poco?"
+- "¿A qué médicos debería visitar primero para crecer con el producto X?"
+- "¿En qué productos de mi laboratorio tengo Evolución Trimestral negativa, tomando todos los mercados que trabajo?"
+- "De los medicamentos que le promociono al Dr. X, ¿cuál es el que más prescribe?"
 
 **Fuentes involucradas**: las 3 en simultáneo, con joins multi-tabla vía maestros de integración.
-**Patrón**: queries analíticas con varias agregaciones, ventanas temporales (YoY, evolución trimestral, MAT — Moving Annual Total), filtros por cartera del APM.
-**Latencia esperada**: aquí está el giro — **15 a 60 segundos** si se hacen ad-hoc sobre los datasets completos. Esto fuerza una experiencia distinta (ver sección "Los 3 carriles").
-**Frecuencia**: 1–3 veces por día por APM. Son preguntas "pensadas" que el APM hace cuando planifica su semana o prepara una visita estratégica.
+**Patrón**: queries con varias agregaciones, ventanas temporales (YoY, evolución trimestral, MAT), filtros por cartera del APM.
+**Frecuencia**: 1-3 veces por día por APM. Son preguntas "pensadas" que el APM realiza al planificar su semana o preparar una visita estratégica.
 
-### La conclusión operativa
+### La tensión que define todo el diseño
 
-Un sistema que sirve **las 3 categorías con la misma infraestructura** termina siendo mediocre para todas. Las preguntas de bajo valor quedan lentas. Las de gran valor quedan imposibles. La única forma de hacerlo bien es reconocer que son **3 productos en uno** y diseñar 3 carriles de respuesta.
+Las preguntas operativas son las más frecuentes pero las menos diferenciadoras. Las cross-source son las menos frecuentes pero las que justifican el producto.
+
+**El sistema debe servir bien a ambas**, sin que las operativas se vuelvan lentas por sobre-ingeniería ni las cross-source se vuelvan inaccesibles por sub-ingeniería.
 
 
 ---
 
-## Por qué la demo actual no alcanza
+## Por qué la demo actual requiere evolución
 
-La demo usa DynamoDB como única fuente. Eso funciona para el set de preguntas de Peccy (12 médicos sintéticos) pero se quiebra en producción por 4 razones concretas:
+La demo utiliza DynamoDB como única fuente. Funciona muy bien para 12 médicos sintéticos, y será necesario extenderla para el escenario productivo por cuatro razones concretas:
 
-### 1. DynamoDB no hace joins
+### 1. DynamoDB no está diseñado para joins analíticos
 
-Todas las preguntas de gran valor requieren cruzar 2 o 3 fuentes. DynamoDB no tiene joins. Las opciones son:
+Todas las preguntas cross-source requieren cruzar 2 o 3 fuentes. DynamoDB, por diseño, no soporta joins. Las alternativas para resolverlo solo con DynamoDB presentan trade-offs:
 
-- **Denormalizar en una sola tabla**: explotaría el tamaño porque habría que replicar prescripciones por cada médico × cada producto foco × cada mercado
-- **Hacer múltiples queries + join en Lambda**: funciona para volúmenes chicos pero no escala a millones de prescripciones
-- **No responder esas preguntas**: lo peor de los tres
+- **Denormalizar en una sola tabla**: el tamaño se incrementa significativamente, ya que habría que replicar prescripciones por cada médico × producto foco × mercado
+- **Hacer múltiples queries + join en Lambda**: funciona para volúmenes chicos; su escalabilidad se degrada con millones de prescripciones
+- **Limitar las preguntas a las pre-diseñadas**: reduce el diferencial del agente
 
-Ninguna es aceptable. Hace falta un engine SQL por encima del data lake.
+La solución natural es incorporar un motor SQL por encima, complementando a DynamoDB.
 
-### 2. El histórico de prescripciones y ventas no cabe en DynamoDB a costo razonable
+### 2. El histórico tiene un fit mejor en almacenamiento analítico
 
-Una fact table de prescripciones de 100 millones de rows en DynamoDB cuesta órdenes de magnitud más que la misma en S3 + Iceberg. DynamoDB es hot storage (caro por GB, barato por query). Los datos históricos deben vivir en warm storage.
+Una fact table de prescripciones de 100 millones de filas en DynamoDB tiene un costo considerablemente mayor que la misma en S3 + Parquet. DynamoDB está optimizado para hot storage — excelente para queries puntuales de baja latencia. Los datos históricos grandes tienen un fit natural con almacenamiento analítico columnar.
 
 ### 3. Las tres fuentes cambian con frecuencias distintas
 
-- CRM interno del laboratorio cambia varias veces por día
+- CRM interno cambia varias veces por día
 - CloseUp actualiza mensual o quincenalmente
 - IQVIA actualiza mensualmente
 
-Un único pipeline que refresca todo cada noche es subóptimo. Necesitamos pipelines separados con frecuencias propias.
+Un único pipeline nocturno que refresca todo no aprovecha estas diferencias. Cada fuente se beneficia de su propia cadencia.
 
-### 4. Las preguntas de gran valor requieren experiencia async
+### 4. "Hablar con los datos" se potencia con SQL dinámico
 
-Si el agente tarda 45 segundos en cruzar CRM interno + CloseUp + IQVIA para dar un ranking inteligente de médicos a visitar, la conexión WebSocket aguanta (hasta 2 horas de AgentCore session) pero la **experiencia de usuario es pobre**: el APM mira la pantalla sin saber qué pasa.
-
-El diseño productivo debe ofrecer una **experiencia asincrónica** donde el APM hace la pregunta, sigue trabajando, y recibe una notificación cuando el análisis termina. Esto es un cambio arquitectónico, no una optimización.
-
----
-
-## Principios de diseño del MLP
-
-Antes de entrar a la arquitectura, cinco principios que guían cada decisión:
-
-### 1. El agente mantiene siempre libertad de razonamiento
-
-No pre-cocinamos respuestas. El LLM decide qué tools invocar en cada pregunta. Lo que pre-computamos son **datos agregados** que los tools pueden leer. Si el APM hace una pregunta que no anticipamos, el agente la responde igual — solo con un poco más de latencia.
-
-### 2. Hot, warm y async son carriles distintos con SLA distinto
-
-Cada pregunta se clasifica en el momento de razonamiento del agente. El agente tiene tools de tres tipos; cada uno lee de su storage óptimo. No hay un tool "universal" que haga todo porque eso obliga a comprometer algún SLA.
-
-### 3. El data lake es fuente única de verdad para analítica
-
-Las 3 fuentes se replican a S3 como **tablas Iceberg independientes**. No las pre-joineamos durante la ingesta. Athena queryea las 3 según haga falta, con los maestros de integración. Esto deja el schema original intacto y fácil de debuggear.
-
-### 4. Pre-computación agresiva pero selectiva
-
-Las preguntas de medio y gran valor que sabemos que el APM hace **todos los días** se materializan en Redis/DynamoDB durante el batch nocturno. Así el 80% de las preguntas comunes responden en <500 ms. El 20% restante va ad-hoc a Athena.
-
-### 5. Experiencia async para análisis profundos
-
-Preguntas de gran valor que requieren 15–60 segundos de cómputo no bloquean al APM. Se despachan a un job, el APM recibe confirmación inmediata ("Analizando, te aviso cuando esté listo"), sigue navegando la app, y recibe una notificación push cuando el resultado está listo.
+El diferencial del agente es que el APM pregunta en lenguaje natural y el agente arma la consulta. Esto se potencia con un motor donde el LLM puede generar SQL libremente sobre un schema conocido. DynamoDB se destaca en otros escenarios, principalmente como hot path complementario.
 
 
 ---
 
-## Arquitectura objetivo
+## Posicionamiento frente a Amazon Quick Suite
+
+Antes de justificar por qué un text-to-SQL custom tiene sentido, corresponde posicionar lo que AWS ya ofrece en el espacio de self-service BI.
+
+[Amazon Quick Suite](https://aws.amazon.com/quicksuite/) — anteriormente Amazon QuickSight — es la suite de inteligencia de negocios con capacidades de IA generativa de AWS. Incluye **Quick Sight** (el sucesor directo del producto de BI), **Quick Research**, **Quick Flows**, **Quick Automate** y **Quick Index**, todos accesibles a través de **Quick chat** como interfaz conversacional unificada.
+
+Quick Sight con natural language querying resuelve **muy bien** una clase amplia de necesidades analíticas:
+
+- Dashboards con filtros conversacionales
+- Preguntas sobre datasets curados (tablas con definiciones claras, métricas pre-configuradas)
+- Generación de visualizaciones a partir de prompts
+- Executive summaries automáticos, data stories, generative Q&A
+
+AWS publicó un blog que sistematiza [cinco patrones distintos para retrieval de datos estructurados con IA generativa](https://aws.amazon.com/blogs/machine-learning/choosing-the-right-approach-for-generative-ai-powered-structured-data-retrieval/), y Quick Suite cubre los primeros tres.
+
+### Cuándo Quick Suite alcanza y cuándo no
+
+**Quick Suite alcanza cuando**:
+- Los datos viven en un warehouse único con schema limpio
+- Las métricas del negocio están bien definidas y son estables
+- Las preguntas caen dentro de semantic layers curados o dashboards modelados
+- Los usuarios trabajan principalmente con datos ya preparados
+
+**Un text-to-SQL custom se justifica cuando** (lo que sucede en pharma):
+- Los usuarios necesitan cruzar **múltiples fuentes con schemas que no se diseñaron coordinadamente** (CRM + CloseUp + IQVIA)
+- Existe **lógica de negocio específica** que no cabe en un semantic layer genérico (productos foco por ciclo, mercados por línea terapéutica, cadencias de visita, cobertura imperfecta de maestros)
+- Las preguntas incluyen **joins ad-hoc sobre tablas fuera de semantic models pre-configurados**
+- El agente necesita **explicar los huecos de datos** y razonar sobre tablas maestras de integración mantenidas manualmente
+
+Este posicionamiento es importante porque **no queremos competir con Quick Suite** — queremos complementarlo. Un laboratorio puede usar Quick Sight para sus dashboards de management y PharmAssist para el APM en campo. Son productos para usuarios, contextos y profundidades distintas.
+
+
+---
+
+## Patrón de referencia: text-to-SQL con Amazon Bedrock
+
+AWS publicó en 2025 un [blog oficial que detalla un patrón probado de text-to-SQL con Amazon Bedrock](https://aws.amazon.com/blogs/machine-learning/text-to-sql-solution-powered-by-amazon-bedrock/), desplegado a escala por equipos internos. La arquitectura que propone para PharmAssist se apoya fuertemente en ese patrón, con adaptaciones al dominio farmacéutico.
+
+El patrón de referencia establece cinco etapas operativas:
+
+### Etapa 1 — Análisis y descomposición de la pregunta
+
+Cuando llega una pregunta, un procesador la clasifica:
+
+- **Preguntas atómicas** (factuales, de una sola métrica) van directamente al pipeline de data retrieval
+- **Preguntas compuestas o multi-parte** se descomponen en subpreguntas independientes que pueden procesarse **en paralelo por equipos de agentes separados**
+
+Esta descomposición es la que permite manejar preguntas complejas (que cruzan dominios, períodos, dimensiones) sin pagar latencia secuencial.
+
+### Etapa 2 — Recuperación de contexto de negocio vía GraphRAG
+
+Acá es donde el sistema resuelve el "context barrier" — el problema de traducir terminología de negocio a tablas y columnas correctas. Es el diferencial más importante frente a un text-to-SQL ingenuo.
+
+El contexto de negocio vive en un **knowledge graph** que captura:
+
+- Ontología de tablas (qué tabla es qué, qué representa cada columna)
+- Relaciones entre entidades de negocio (médico, producto, mercado, ciclo, foco)
+- Definiciones de métricas (EVO trimestral, MAT, cobertura, frecuencia vs cadencia)
+- Mapeos de terminología (los APMs dicen "mis mercados" y el LLM debe entender qué tablas filtrar)
+- Reglas de negocio (qué significa "médico de cartera", qué define "foco")
+
+Este grafo se enriquece con conocimiento de los dueños de cada tabla y SMEs de negocio.
+
+Cuando llega una pregunta, el sistema ejecuta una **búsqueda GraphRAG en tres fases**:
+
+1. **Vector search**: encuentra columnas, valores y descripciones semánticamente relevantes usando embeddings
+2. **Graph traversal**: sigue las relaciones del grafo desde los matches encontrados hacia sus tablas padre, construyendo un mapa de qué datos son relevantes y cómo se conectan
+3. **Relevance scoring**: rankea y estructura el contexto recuperado de forma que el generador de SQL reciba precisamente lo que necesita
+
+### Etapa 3 — Generación estructurada y validación del SQL
+
+El LLM genera SQL como **structured output** vía function calling, no como texto que hay que parsear. Esto elimina regex frágiles y mejora significativamente la confiabilidad.
+
+Las queries generadas pasan por **validadores determinísticos a nivel AST (Abstract Syntax Tree)**. Los validadores identifican queries que son sintácticamente correctas pero semánticamente riesgosas:
+
+- Escaneos sin filtros acotados
+- Filtros faltantes (ej. sin filtro por `apm_id` donde corresponde)
+- Lógica de agregación incorrecta
+- Joins sobre rutas no permitidas
+
+Cuando un validador encuentra un problema, devuelve feedback detallado. El agente itera automáticamente hasta producir una query válida o agotar un límite configurable de reintentos. El blog oficial reporta que esta capa evita efectivamente errores serios en las queries generadas y la posiciona como "non-negotiable safety mechanism".
+
+### Etapa 4 — Test-time parallel compute (opcional)
+
+Para preguntas ambiguas o complejas, el sistema puede enviar la misma pregunta a **múltiples agentes en paralelo** y sintetizar los resultados vía majority voting. Mejora precisión a cambio de más tokens, y es particularmente valioso cuando hay ambigüedad en la interpretación.
+
+No es necesario para el MLP inicial, pero es una optimización disponible.
+
+### Etapa 5 — Síntesis de respuesta
+
+Los resultados crudos (números, dataframes, logs de ejecución) se sintetizan en una narrativa de lenguaje natural. El usuario recibe el insight **y** puede inspeccionar el SQL generado y los datos subyacentes en cualquier momento, construyendo trust.
+
+### Latencias reportadas
+
+El blog reporta que con estas optimizaciones, **queries simples de SQL se generan típicamente en 3-5 segundos** end-to-end. Los tiempos reales varían con performance del warehouse, complejidad de la query, elección del modelo y tamaño del knowledge graph.
+
+Este número es una buena referencia para lo que podemos esperar en el MLP, pero corresponde medirlo contra los datos reales del cliente durante el spike.
+
+
+---
+
+## Arquitectura propuesta
+
+La arquitectura sigue el patrón del blog oficial de Bedrock text-to-SQL, adaptado al dominio pharma y a nuestro stack Strands + AgentCore.
 
 ```mermaid
 flowchart TB
-    subgraph Ext["🏢 Fuentes de datos externas a AWS"]
-        CRMINT[("Sistema interno<br/>del laboratorio<br/>CRM + visitas + foco")]
+    subgraph Ext["🏢 Fuentes externas a AWS"]
+        CRMINT[("Sistema interno<br/>CRM + visitas + foco")]
         CUP[("CloseUp<br/>Prescripciones")]
         IQVIA[("IQVIA<br/>Ventas de mercado")]
     end
 
-    subgraph Ingest["📥 Ingesta (pipelines independientes)"]
+    subgraph Ingest["📥 Ingesta"]
         DMS1["DMS · nightly"]
-        DMS2["DMS · monthly"]
-        DMS3["DMS · monthly"]
+        ING2["Ingest mensual"]
+        ING3["Ingest mensual"]
     end
 
-    subgraph Lake["🗂️ Data Lake — S3 Iceberg"]
-        S3CRM[("CRM tables")]
-        S3CUP[("CUP tables")]
-        S3IQV[("IQVIA tables")]
-        MAESTROS[("Maestros<br/>de integración")]
-        GLUE["Glue Catalog<br/>+ ETL"]
+    subgraph Lake["🗂️ Data Lake S3"]
+        S3CRM[("CRM Parquet")]
+        S3CUP[("CUP Parquet")]
+        S3IQV[("IQVIA Parquet")]
+        MAESTROS[("Maestros<br/>integración")]
+        GLUE["Glue Catalog"]
     end
 
     subgraph Hot["⚡ Hot path"]
-        DDB[("DynamoDB<br/>cartera + agenda + foco")]
+        DDB[("DynamoDB<br/>cartera · agenda · foco")]
     end
 
-    subgraph Warm["♨️ Warm path"]
-        REDIS[("ElastiCache Redis<br/>KPIs pre-computados")]
-        ATHENA["Amazon Athena<br/>queries ad-hoc cross-source"]
+    subgraph Semantic["🧠 Capa semántica — GraphRAG"]
+        NEPTUNE[("Neptune Analytics<br/>grafo + vector search")]
     end
 
-    subgraph Async["🧠 Análisis profundo (async)"]
-        SQS["SQS queue"]
-        WORKER["Lambda / Fargate<br/>worker de análisis"]
-        STORE[("S3 + DynamoDB<br/>resultados")]
-        SNS["SNS / WebSocket push<br/>notificación al APM"]
+    subgraph Warm["♨️ Motor analítico"]
+        RS["Redshift Serverless<br/>+ materialized views"]
     end
 
-    subgraph Agent["🤖 AgentCore + Strands"]
-        AGT["Text Agent + semantic_layer.yaml"]
+    subgraph Agent["🤖 AgentCore Runtime"]
+        SUPER["Supervisor Agent<br/>(Strands + Claude)"]
+        DECOMP["Question<br/>Decomposer"]
+        GRAPHRAG["GraphRAG<br/>Search Tool"]
+        SQLGEN["SQL Generator<br/>(function calling)"]
+        VALID["AST Validator<br/>+ RLS injector"]
+        SYNTH["Response<br/>Synthesizer"]
     end
 
     CRMINT --> DMS1 --> S3CRM
-    CUP --> DMS2 --> S3CUP
-    IQVIA --> DMS3 --> S3IQV
+    CUP --> ING2 --> S3CUP
+    IQVIA --> ING3 --> S3IQV
 
     S3CRM --> GLUE
     S3CUP --> GLUE
     S3IQV --> GLUE
     MAESTROS --> GLUE
 
-    GLUE -->|nightly refill| DDB
-    GLUE -->|nightly materialize KPIs| REDIS
-    GLUE --> ATHENA
+    GLUE -->|nightly| DDB
+    GLUE --> RS
+    GLUE -.bootstrap.-> NEPTUNE
 
-    AGT -->|carril instantáneo| DDB
-    AGT -->|carril conversacional| REDIS
-    AGT -->|carril conversacional fallback| ATHENA
-    AGT -->|carril análisis profundo| SQS
-    SQS --> WORKER
-    WORKER --> ATHENA
-    WORKER --> STORE
-    WORKER --> SNS
+    SUPER --> DECOMP
+    SUPER --> GRAPHRAG
+    SUPER --> SQLGEN
+    SUPER --> VALID
+    SUPER --> SYNTH
+
+    GRAPHRAG --> NEPTUNE
+    SQLGEN --> RS
+    SQLGEN --> DDB
 
     classDef ext fill:#6B7280,stroke:#374151,color:#fff
     classDef aws fill:#FF9900,stroke:#232F3E,color:#fff
     classDef data fill:#3F8624,stroke:#232F3E,color:#fff
     classDef agent fill:#8C4FFF,stroke:#232F3E,color:#fff
-    classDef async fill:#DD344C,stroke:#232F3E,color:#fff
 
     class CRMINT,CUP,IQVIA ext
-    class DMS1,DMS2,DMS3,ATHENA,GLUE aws
-    class S3CRM,S3CUP,S3IQV,MAESTROS,DDB,REDIS data
-    class AGT agent
-    class SQS,WORKER,STORE,SNS async
+    class DMS1,ING2,ING3,GLUE aws
+    class S3CRM,S3CUP,S3IQV,MAESTROS,DDB,RS,NEPTUNE data
+    class SUPER,DECOMP,GRAPHRAG,SQLGEN,VALID,SYNTH agent
 ```
 
-### Piezas clave y qué hace cada una
+### Piezas y responsabilidades
 
-| Componente | Rol | Cuándo se usa |
+| Componente | Rol | Referencia |
 |---|---|---|
-| **AWS DMS** (x3) | Replica cada fuente externa a S3 con su propia cadencia | Ingesta nocturna/mensual |
-| **S3 + Apache Iceberg** | Almacena las 3 fuentes como tablas independientes, versionables, con schema evolution | Source of truth analítico |
-| **Glue Data Catalog + ETL** | Indexa metadata, normaliza y prepara las tablas curadas | Una vez al día post-ingesta |
-| **DynamoDB** | Vista materializada hot de cartera, agenda, productos foco, últimas visitas | Queries del carril instantáneo |
-| **ElastiCache Redis** | KPIs pre-computados por APM (rankings, alertas, evolución propia) | Queries del carril conversacional |
-| **Athena** | Engine SQL serverless sobre el lake, queryea las 3 fuentes con joins vía maestros | Carril conversacional (fallback) + carril async |
-| **SQS + Worker (Lambda/Fargate)** | Cola de análisis profundos + worker que ejecuta queries multi-fuente largas | Carril async |
-| **SNS / WebSocket push** | Notifica al APM cuando el análisis profundo termina | Cierre del carril async |
-| **AgentCore Runtime** | Ejecuta el agente Strands con Claude Opus 4.6 | Toda pregunta del APM |
+| **AWS DMS / ingest jobs** | Replica cada fuente a S3 con su cadencia | [AWS DMS docs](https://docs.aws.amazon.com/dms/) |
+| **S3 + Parquet + Glue Catalog** | Fuente única de verdad histórica | [AWS Glue Data Catalog](https://docs.aws.amazon.com/glue/latest/dg/components-overview.html) |
+| **DynamoDB** | Vista hot de cartera, agenda, foco, últimas visitas | Ya en uso en la demo |
+| **Neptune Analytics** | Grafo semántico con vector search integrado (GraphRAG) | [Neptune Analytics](https://docs.aws.amazon.com/neptune-analytics/latest/userguide/what-is-neptune-analytics.html) |
+| **Redshift Serverless** | Motor SQL para queries analíticas y cross-source | [Redshift Serverless](https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-whatis.html) |
+| **Materialized views en Redshift** | Agregaciones base pre-computadas (EVO trimestral, rankings) | Aceleran queries frecuentes sin limitar el SQL dinámico |
+| **Amazon Bedrock AgentCore Runtime** | Hosting del agente Strands con orquestación de flujo | [AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html) |
+| **Strands Agents SDK** | Framework del agente con herramientas MCP | [Strands](https://strandsagents.com/) |
+| **Amazon Bedrock (Claude Opus 4.6)** | LLM para thinking, function calling, síntesis | [Bedrock Models](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) |
+
+### Flujo de una pregunta
+
+1. El APM escribe/habla en el frontend. El prompt llega al **supervisor agent** hosteado en AgentCore Runtime.
+2. El **question decomposer** clasifica la pregunta como atómica o compuesta. Si es compuesta, genera subpreguntas independientes.
+3. Para cada subpregunta, el **GraphRAG Search Tool** consulta Neptune Analytics: vector search + graph traversal + relevance scoring. Retorna el contexto de negocio (tablas, columnas, rutas de join, reglas) relevante.
+4. El **SQL generator** produce SQL estructurado vía function calling, usando el contexto recuperado como base.
+5. El **AST validator** verifica la query y **RLS injector** agrega filtros de seguridad por `apm_id`. Si algo falla, retorna al paso 4 con feedback.
+6. La query se ejecuta contra **Redshift Serverless** (o **DynamoDB** si es hot path).
+7. El **response synthesizer** convierte los resultados crudos en narrativa de lenguaje natural, manteniendo transparencia del SQL y los datos.
+8. La respuesta se streamea al frontend.
+
+### Por qué AgentCore Runtime
+
+Amazon Bedrock AgentCore Runtime es el patrón oficial AWS para hosting de agentes. Provee:
+
+- **Serverless hosting** framework-agnostic (Strands, LangGraph, CrewAI, custom)
+- **Session isolation** — separación total entre sesiones de usuario
+- **Embedded identity management** — integración con AWS IAM y proveedores corporativos
+- **Timeouts extendidos** — hasta 15 minutos por request, con soporte async para tareas más largas
+- **Bi-directional streaming con WebSocket nativo** — usado para el modo voz con Nova Sonic
+- **Observabilidad integrada** — traces y métricas a CloudWatch
+- **Pricing por consumo activo** — no se paga por I/O wait ni idle
+
+Existe un [blog oficial](https://aws.amazon.com/cn/blogs/china/implement-agentic-analytics-based-on-redshift-mcp-server-sdk-runtime/) que documenta exactamente el patrón Strands + AgentCore Runtime + Redshift MCP Server para agentic analytics, que es el escenario de PharmAssist.
+
+### La pieza delicada: el SQL generado por el LLM
+
+Un LLM generando SQL sobre un warehouse real requiere controles específicos. El patrón oficial los aborda:
+
+1. **Function calling** para estructura — el SQL se genera como structured output, no texto
+2. **AST-level validation** antes de ejecutar — detecta problemas semánticos, no solo sintácticos
+3. **Retry loop automático** — si el validator encuentra un problema, el agente itera
+4. **Row-level security inyectado** — filtros por `apm_id` se agregan automáticamente post-generación
+5. **Query limits** — timeouts, máximo de bytes escaneados, LIMIT máximo en resultados
+6. **Logging completo** — cada SQL generado queda auditado para mejora continua
+
+Estos controles no son opcionales. Son el "safety-critical layer" que hace que el agente sea confiable en producción.
 
 
 ---
 
-## Los 3 carriles de respuesta
+## Ingesta y almacenamiento
 
-Cada pregunta del APM se resuelve por uno de estos 3 carriles. **El agente Strands decide cuál usar** según el tool que invoca. El APM no elige manualmente.
-
-### Carril 1 — Instantáneo (<500 ms data, 2–3 s total)
-
-**Para qué**: preguntas operativas y de bajo valor. Lookup por ID, filtro simple sobre cartera, últimas visitas.
-
-**Cómo funciona**: el tool del agente lee directamente de DynamoDB, que tiene una vista pre-denormalizada del sistema interno (cartera, agenda, productos foco del APM, últimas visitas por médico). Refresh nocturno.
-
-**Streaming sincrónico**: el agente streamea la respuesta por WebSocket como en la demo actual. El APM ve la respuesta aparecer palabra por palabra.
-
-**Ejemplos de preguntas**:
-
-- *"¿Cuándo fue la última visita al Dr. Peralta?"*
-- *"¿Qué promocioné en la última visita?"*
-- *"¿Cuántos médicos tengo asignados?"*
-- *"¿Qué médicos tengo en Belgrano?"*
-- *"¿Cuáles son mis visitas de hoy?"*
-
-### Carril 2 — Conversacional (2–5 s total)
-
-**Para qué**: preguntas de valor medio y algunas de gran valor que son frecuentes. Rankings, top-N, agregaciones acotadas al APM o a un médico específico.
-
-**Cómo funciona (ruta feliz)**: el tool del agente intenta primero **Redis**. Si hay un KPI pre-computado que matchea la pregunta (ej. "top 5 productos más prescritos por el Dr. X en mi cartera"), lo devuelve en <10 ms. El KPI fue calculado durante el batch nocturno usando Athena + maestros de integración.
-
-**Cómo funciona (ruta de fallback)**: si la pregunta es una variante del set pre-computado o el APM la hace sobre un médico/zona fuera del cache, el tool cae a **Athena**. Query típica de 1–3 segundos sobre Iceberg con partitioning. Opcionalmente el resultado se guarda en Redis con TTL corto para futuras consultas similares.
-
-**Streaming sincrónico**: el agente streamea mientras espera. Claude puede empezar con un prefacio ("Déjame revisar tus prescripciones...") antes de invocar el tool, llenando el tiempo que el APM percibe.
-
-**Ejemplos de preguntas**:
-
-- *"¿Cuáles son los médicos que visito con menos frecuencia?"* (ranking sobre CRM interno)
-- *"¿Cuáles son los 5 productos que más prescribe el Dr. X?"* (agregación sobre CloseUp)
-- *"¿Cuáles son los 10 médicos más prescriptores en el mercado de cardiología?"* (ranking sobre CloseUp)
-- *"¿En qué productos tengo EVO Trimestral negativa tomando todos mis mercados?"* (cruzando IQVIA con mercados del APM en el CRM interno)
-
-### Carril 3 — Análisis profundo async (15–60 s total, con notificación)
-
-**Para qué**: preguntas de gran valor que requieren cruzar las 3 fuentes con agregaciones complejas, ventanas temporales y rankings multi-criterio. Son preguntas "pensadas" que el APM hace cuando planifica.
-
-**Cómo funciona**: cuando el agente detecta que la pregunta entra en esta categoría (lo decide el LLM basándose en descripciones de tools y la capa semántica), no ejecuta la query inline. En su lugar:
-
-1. **Encola el trabajo** en SQS con el payload de la pregunta estructurada
-2. **Responde inmediatamente** al APM por el WebSocket: *"Estoy analizando tu cartera cruzada con prescripciones y productos foco. Esto puede tardar hasta un minuto; te aviso cuando esté listo. Mientras tanto podés seguir trabajando."*
-3. Un **worker separado** (Lambda de 10 min o Fargate task) toma el mensaje de SQS, ejecuta las queries Athena cross-source, procesa los resultados
-4. El worker **guarda el resultado** en S3 (si es un reporte rich) y/o DynamoDB (si es corto)
-5. **Notifica al APM** vía SNS push a la app o vía WebSocket (si sigue conectado) con un link al resultado
-6. Cuando el APM abre el resultado, lo ve renderizado como una "tarjeta de análisis" — con tablas, gráficos, y opcionalmente un resumen generado por Claude
-
-**No bloquea al APM**: el usuario puede hacer otras preguntas, navegar el dashboard, irse a una visita. El resultado lo espera cuando vuelve.
-
-**Ejemplos de preguntas** (son preguntas que justifican toda la arquitectura):
-
-- *"Recomendame a qué médicos debería visitar según sus prescripciones y mis productos foco"* — cruza cartera + foco (CRM interno) + prescripciones (CloseUp) + maestros + scoring
-- *"¿Qué médicos vienen creciendo en prescripción de mis productos foco y los estoy visitando poco?"* — análisis YoY + frecuencia de visitas + productos foco
-- *"¿A qué médicos debería visitar primero para crecer con el producto X?"* — ranking multi-criterio sobre toda la cartera
-- *"De los medicamentos que le promociono al Dr. X, ¿cuál es el que más prescribe?"* — intersección agenda + prescripciones + integrador de productos
-
-### Comparación rápida de los 3 carriles
-
-| Dimensión | Instantáneo | Conversacional | Análisis profundo (async) |
-|---|---|---|---|
-| Storage | DynamoDB | Redis + Athena | Athena sobre Iceberg |
-| Latencia data | <30 ms | 10 ms – 3 s | 10 – 50 s |
-| Latencia total percibida | 2–3 s | 2–5 s | Inmediato (ack) + 15–60 s (notificación) |
-| Conexión | WS streaming sync | WS streaming sync | WS ack + SNS push async |
-| Patrón de query | GetItem / Query | KPI lookup / SQL acotado | SQL cross-source con joins |
-| Fuentes típicas | 1 (CRM interno) | 1–2 | 3 con maestros |
-| Frecuencia por APM | decenas/día | unas/día | 1–3/día |
-
-
----
-
-## Ingesta: warehouse externo → AWS
-
-Cada una de las 3 fuentes se replica a AWS con su propia cadencia. No hay un único pipeline universal; cada fuente tiene características propias.
+Cada fuente se replica a AWS con su propia cadencia. No hay un único pipeline universal.
 
 ### Sistema interno (CRM del laboratorio)
 
-- **Origen**: base corporativa (típicamente SQL Server, Oracle, PostgreSQL). Schema normalizado con decenas de tablas.
-- **Cadencia**: batch nocturno (las operaciones OLTP cierran al final del día)
+- **Origen**: base corporativa (SQL Server, Oracle, PostgreSQL). Schema normalizado.
+- **Cadencia**: batch nocturno
 - **Herramienta**: AWS DMS en modo Full Load o CDC
-- **Destino**: S3 Iceberg particionado por `fecha_carga` (snapshot diario)
-- **Particularidad**: hay vistas maestras construidas sobre el schema normalizado que ya denormalizan parte del trabajo. Podemos replicar las vistas directamente para simplificar el ETL.
+- **Destino**: S3 Parquet particionado por `fecha_carga` (snapshot diario)
+- **Nota**: si el CRM ya tiene vistas maestras que denormalizan parte del schema, replicarlas directamente simplifica el ETL.
 
 ### Prescripciones (CloseUp)
 
-- **Origen**: dataset que CloseUp entrega mensual o quincenalmente. Puede llegar como archivos (Parquet, CSV) a un FTP/S3 del cliente, o como tablas en un warehouse compartido.
-- **Cadencia**: mensual (a veces quincenal)
-- **Herramienta**: si es archivos, una Lambda que detecta llegada y mueve a landing zone. Si es warehouse, DMS en modo Full Load mensual.
-- **Destino**: S3 Iceberg particionado por `anio_mes`
-- **Particularidad**: la fact table es grande. El ETL debe ser idempotente (si la carga se ejecuta dos veces, no duplica prescripciones).
+- **Origen**: dataset mensual o quincenal, entregado como archivos (Parquet/CSV) a un FTP/S3 del cliente, o como tablas en un warehouse compartido
+- **Cadencia**: mensual o quincenal
+- **Herramienta**: Lambda de ingesta que detecta archivos nuevos, o DMS Full Load mensual si es warehouse
+- **Destino**: S3 Parquet particionado por `anio_mes`
+- **Particularidad**: fact table grande. El ETL debe ser idempotente — si la carga se ejecuta dos veces, no debe duplicar prescripciones.
 
 ### Ventas de mercado (IQVIA)
 
-- **Origen**: IQVIA entrega el dataset mensualmente, típicamente como archivos comprimidos o vía su portal.
+- **Origen**: IQVIA entrega el dataset mensualmente, típicamente por SFTP o su portal
 - **Cadencia**: mensual
-- **Herramienta**: típicamente un cliente SFTP más un ingest Lambda que convierte a Parquet
-- **Destino**: S3 Iceberg particionado por `anio_mes`
-- **Particularidad**: el schema viene bien estructurado (dimensional star schema), requiere transformación mínima.
+- **Herramienta**: cliente SFTP + Lambda de ingest que convierte a Parquet
+- **Destino**: S3 Parquet particionado por `anio_mes`
 
 ### Maestros de integración
 
-Las tablas maestras (`maestro_integrador_producto`, `maestro_medicos`, `Familia_Interno_a_Marca_CUP`) son pequeñas pero **críticas**. Se cargan manualmente o vía script cuando cambian (baja frecuencia). Viven en S3 Iceberg como tablas chicas, queryeables vía Athena junto con las demás.
+Las tablas maestras (`maestro_integrador_producto`, `maestro_medicos`) son pequeñas pero **críticas**. Se cargan cuando cambian (baja frecuencia). Viven en S3 como tablas chicas, consultables junto con las demás.
 
-### AWS DMS: costo y configuración
-
-DMS se configura como una **replication instance** (EC2 managed) o como **DMS Serverless** (on-demand). Para el caso:
-
-- **Serverless** para la carga del CRM interno (batch nocturno, instancia prendida solo 1 hora/día): ~$15/mes
-- **On-demand scheduled tasks** para CloseUp e IQVIA (corre 1 vez al mes): ~$5/mes cada una
-
-Total DMS: **~$25/mes** para las 3 fuentes.
-
-
----
-
-## Almacenamiento: data lake con 3 dominios
-
-Todo el histórico vive en **S3 como Apache Iceberg**, con 3 dominios separados + maestros. Las tablas nunca se pre-joinean durante la ingesta — eso ocurre en query time (Athena) o durante la materialización de KPIs (nightly job).
+**Decisión clave a definir con el cliente al inicio**: ¿quién mantiene estos maestros? ¿Cuál es su cobertura actual? ¿Cómo se sincroniza el mantenimiento con las actualizaciones de CloseUp e IQVIA?
 
 ### Estructura del bucket
 
 ```
 s3://pharmassist-lake/
-├── crm/                      ← sistema interno, cadencia diaria
+├── crm/                      ← cadencia diaria
 │   ├── cartera_medica/
 │   ├── agenda/
-│   ├── agenda_producto/
 │   ├── familia_producto/
 │   ├── detalle_promocion_producto/
-│   ├── linea_apm/
-│   ├── grilla/
-│   └── ... (resto del schema del CRM interno)
-├── cup/                      ← CloseUp, cadencia mensual
+│   └── ...
+├── cup/                      ← cadencia mensual
 │   ├── medico/
-│   ├── prescricao/          ← fact table grande
+│   ├── prescricao/           ← fact table grande
 │   ├── mercados/
-│   ├── mercados_productos/
 │   └── marca/
-├── iqvia/                    ← IQVIA, cadencia mensual
+├── iqvia/                    ← cadencia mensual
 │   ├── dim_droga/
 │   ├── dim_presentacion/
-│   ├── dim_laboratorio/
-│   ├── dim_periodo/
-│   ├── fact_mercado_valor/  ← fact table grande
-│   └── ... (resto del schema IQVIA)
-└── maestros/                 ← tablas de integración, cadencia baja
+│   ├── fact_mercado_valor/   ← fact table grande
+│   └── ...
+└── maestros/                 ← cadencia baja
     ├── maestro_integrador_producto/
     ├── maestro_medicos/
     └── familia_interno_a_marca_cup/
 ```
 
-### Particionado para performance
+### Parquet vs Iceberg
 
-Cada fact table se particiona por columnas de alta selectividad que los APMs usan en sus queries:
+**Parquet simple** alcanza para el MLP productivo inicial. Es más económico, más simple, y todas las herramientas lo leen.
+
+**Iceberg** se justifica cuando:
+
+- Hay múltiples writers concurrentes sobre las mismas tablas
+- Se requiere time travel frecuente para auditoría
+- Las fact tables crecen al punto que la compactación automática aporta valor
+
+**Decisión pragmática**: iniciar con Parquet. Migrar a Iceberg solo si aparece una necesidad concreta.
+
+### Particionado
+
+Cada fact table se particiona por columnas de alta selectividad:
 
 | Tabla | Particionado |
 |---|---|
@@ -482,436 +562,518 @@ Cada fact table se particiona por columnas de alta selectividad que los APMs usa
 | `iqvia/fact_mercado_valor` | `idperiodo` (año-mes) |
 | `crm/agenda` | `fecha_visita` |
 
-Con particionado + formato columnar Parquet, una query del estilo *"prescripciones del Dr. X en los últimos 12 meses"* escanea decenas de MB, no GB. **Costo Athena por query típica: centavos.**
-
-### Por qué Iceberg y no solo Parquet
-
-- **Schema evolution**: cuando CloseUp agregue una columna nueva al mes que viene, no rompe queries existentes
-- **Time travel**: podemos ver los datos como eran hace 3 meses para auditar un insight
-- **ACID**: si el ETL falla en medio del Full Load, el lake no queda inconsistente
-- **Compactación automática**: al tiempo los archivos chicos se vuelven problema; Iceberg los compacta
-- **Engine agnóstico**: Athena, EMR, Redshift Spectrum, Databricks — todos leen la misma tabla sin replicar datos
-
-### Glue Data Catalog
-
-El catalog central que describe todas las tablas con su schema, ubicación, formato y particiones. Athena, Glue ETL, y cualquier herramienta de BI que el cliente conecte en el futuro usan este catalog como fuente de verdad del data lake.
-
+Con partitioning + formato columnar Parquet, una query típica escanea decenas de MB en lugar de GB.
 
 ---
 
-## Capa semántica: el agente entiende el negocio
+## La capa semántica: GraphRAG con Neptune Analytics
 
-El LLM por sí solo no sabe qué es un "producto foco", cómo se calcula "Evolución Trimestral", ni que el `CDGMED` de CloseUp se cruza con el `id` de `doctor` del CRM interno vía la tabla `maestroMedicos`. La **capa semántica** es el artefacto que le enseña ese conocimiento de dominio.
+Esta es la pieza más diferenciadora del diseño y la que más trabajo requiere. El LLM por sí solo no conoce qué es un "producto foco", cómo se calcula "Evolución Trimestral", ni que `CDGMED` se cruza con `id_doctor` vía `maestro_medicos`. La capa semántica es el artefacto que le aporta ese dominio.
 
-### Qué contiene
+### Por qué Neptune Analytics y no un YAML
 
-Un archivo YAML (o colección de archivos) inyectado al system prompt del agente, con 4 bloques:
+Un acercamiento inicial tentador es mantener la capa semántica como un YAML inyectado al system prompt. Funciona para dominios simples. Para pharma con 3 fuentes cruzadas, maestros imperfectos y ~15-20 entidades de negocio con relaciones complejas, un YAML se vuelve frágil rápido.
 
-**1. Entidades del dominio** con sus atributos, tabla física y tags semánticos:
+[Amazon Neptune Analytics](https://docs.aws.amazon.com/neptune-analytics/latest/userguide/what-is-neptune-analytics.html) es el motor gráfico in-memory de AWS diseñado para workloads analíticos sobre grafos. Características relevantes para el caso:
 
-```yaml
-entidades:
-  Medico:
-    descripcion: "Profesional de la salud visitado por un APM."
-    id_interno: crm.doctor.id
-    id_externo_prescripciones: cup.medico.CDGMED
-    cruce: maestros.maestro_medicos (codInterno ↔ codCUP)
-    atributos_clave:
-      - especialidad: crm.doctor.especialidad_id → crm.especialidad.nombre
-      - cartera_APM: crm.cartera_medica (apm_id → doctor_id)
+- **Vector search nativo integrado con el grafo** — consultas que combinan similarity search sobre embeddings con graph traversal en la misma query
+- **Soporte oficial para GraphRAG** — AWS publicó un [GraphRAG Toolkit open-source](https://aws.amazon.com/about-aws/whats-new/2025/01/amazon-neptune-open-source-graphrag-toolkit/) que construye automáticamente el grafo desde datos no estructurados
+- **Integración directa con Bedrock Knowledge Bases** como vector store para GraphRAG
+- **openCypher** como lenguaje de query
+- **In-memory**: toda la data del grafo vive en memoria, latencias bajas para traversals
 
-  Producto:
-    descripcion: "Producto farmacéutico del laboratorio o de competidores."
-    id_laboratorio: crm.familia_producto.id
-    id_closeup: cup.marca.codigo_marca
-    id_iqvia: iqvia.dim_presentacion.idProducto
-    cruce: maestros.maestro_integrador_producto
-    categoria_comercial:
-      - foco: detalle_promocion_producto.id_categoria = 'foco'
-      - hiperfoco: detalle_promocion_producto.id_categoria = 'hiperfoco'
-```
+### Qué vive en el grafo
 
-**2. Métricas del negocio** con su fórmula expresada en SQL o pseudocódigo:
+**Nodos (entidades)**:
 
-```yaml
-metricas:
-  evolucion_trimestral_prescripciones:
-    alias: [EVO_TRM, EVO trimestral]
-    definicion: |
-      Porcentaje de variación de prescripciones del trimestre actual vs
-      el mismo trimestre del año anterior, por médico y producto/mercado.
-    formula_pseudocodigo: |
-      (px_trimestre_actual - px_trimestre_anterior_mismo_año)
-      / px_trimestre_anterior_mismo_año * 100
-    fuente: cup.prescricao
-    ventana_temporal: trimestre vs trimestre Y-1
+- `Medico` (con `id_interno`, `CDGMED`, embeddings de nombre + especialidad)
+- `Producto` (con `SKU_interno`, `codigo_CUP`, `EAN`, `idProducto_IQVIA`, embeddings de nombre + composición)
+- `Mercado` (con `CDG_MERCADO`, embeddings de descripción)
+- `APM` (con `apm_id`, líneas asignadas)
+- `Metrica` (con nombre, aliases, definición, SQL template, embeddings)
+- `Tabla` (con nombre físico, schema, descripción)
+- `Columna` (con nombre, tipo, descripción, embeddings)
 
-  productos_foco_del_apm:
-    definicion: "Productos marcados como Foco o Hiperfoco en el ciclo activo para las líneas asignadas al APM."
-    tablas: [crm.linea_apm, crm.grilla, crm.detalle_promocion_producto, crm.categoria, crm.ciclo]
-    sql_template: |
-      SELECT DISTINCT fp.*
-      FROM crm.linea_apm la
-      JOIN crm.grilla g ON g.id_linea = la.id_linea
-      JOIN crm.detalle_promocion_producto dpp ON dpp.id_grilla = g.id
-      JOIN crm.categoria c ON c.id = dpp.id_categoria
-      JOIN crm.ciclo ci ON ci.id = dpp.id_ciclo
-      JOIN crm.familia_producto fp ON fp.id = dpp.id_familia_producto
-      WHERE la.apm_id = :apm_id
-        AND c.nombre IN ('foco', 'hiperfoco')
-        AND ci.activo = true
-```
+**Aristas (relaciones)**:
 
-**3. Queries canónicas** — ejemplos de queries conocidas que el agente puede adaptar:
+- `Medico — [MAPEADO_CON, cobertura: 0.78] — Medico_CUP`
+- `Producto — [MAPEADO_CON, cobertura: 0.82] — Producto_CUP`
+- `APM — [ATIENDE] — Medico`
+- `Producto — [ES_FOCO_EN] — Ciclo`
+- `Mercado — [AGRUPA] — Producto_CUP`
+- `Metrica — [CALCULADA_SOBRE] — Tabla`
+- `Tabla — [JOIN_VIA] — Tabla` (con ruta de join explícita)
 
-```yaml
-queries_canonicas:
-  ranking_medicos_prescriptores_en_mercado:
-    pregunta_ejemplo: "Los 10 médicos más prescriptores en el mercado X"
-    carril: conversacional
-    sql: |
-      SELECT m.CDGMED, m.nombre, SUM(p.cantidad) as px_total
-      FROM cup.prescricao p
-      JOIN cup.medico m ON m.CDGMED = p.CDGMED
-      JOIN cup.mercados_productos mp ON mp.CDG_PROD = p.CDGPRO
-      WHERE mp.CDG_MERCADO = :mercado_id
-        AND p.DATA >= CURRENT_DATE - INTERVAL '12' MONTH
-      GROUP BY m.CDGMED, m.nombre
-      ORDER BY px_total DESC
-      LIMIT 10
-```
+Cada nodo importante tiene **embeddings** asociados, de forma que vector search pueda matchear "productos para diabetes" con nodos de mercado terapéutico aunque el término exacto no aparezca.
 
-**4. Reglas del negocio** (las consideraciones del documento del cliente):
+### Qué sucede cuando llega una pregunta
 
-```yaml
-reglas_negocio:
-  - "Si un producto no tiene codProductoCUP, significa que no tuvo prescripciones."
-  - "Si un producto no tiene codProductoBarrasEAN11 ni idProducto de IQVIA, no tuvo ventas."
-  - "Un médico lo atiende el laboratorio solo si tiene codInterno en maestro_medicos."
-  - "Los productos foco son a nivel APM (por sus líneas); los productos objetivo son a nivel médico."
-  - "Para productos de promoción usar detalle_promocion_producto con categoria foco/hiperfoco."
-```
+Ejemplo: *"¿Cuáles son los 5 productos que más prescribe el Dr. Peralta en mis mercados?"*
 
-### Cómo se inyecta
+1. **Vector search**: encuentra nodos relevantes — `Medico: Peralta`, `Metrica: top_prescripciones`, `Entidad: mercado`
+2. **Graph traversal**: desde el APM actual, sigue `[ATIENDE] -> Medico -> [MAPEADO_CON] -> Medico_CUP` para obtener el `CDGMED` del Dr. Peralta. Desde el APM, sigue `[TRABAJA_MERCADOS] -> Mercado -> [AGRUPA] -> Producto_CUP` para obtener los mercados del APM.
+3. **Relevance scoring**: estructura el contexto — tablas involucradas (`cup.prescricao`, `cup.mercados_productos`), columnas relevantes, rutas de join, y la regla de negocio "top prescripciones = SUM(cantidad) con GROUP BY producto"
+4. El contexto se pasa al **SQL generator** que produce la query acotada
 
-El `semantic_layer.yaml` se carga al iniciar el agente y se pasa como parte del system prompt de Claude. Cuando el APM hace una pregunta, el LLM tiene todo el contexto necesario para:
+### Dimensionamiento y costo de Neptune Analytics
 
-1. **Identificar qué entidades están involucradas** (médico, producto foco, prescripciones)
-2. **Elegir qué tool invocar** (instantáneo, conversacional o async)
-3. **Adaptar una query canónica** al contexto específico del APM
-4. **Aplicar reglas de negocio** (filtros correctos, interpretaciones correctas de métricas)
+Neptune Analytics se mide en **m-NCU (memory-optimized Neptune Capacity Units)**. El precio en us-east-1 es **aproximadamente $0.030 por m-NCU-hora** (validado contra AWS Pricing API en abril 2026). La capacidad mínima es 128 m-NCU.
 
-### Por qué YAML y no Neptune
+**Para un grafo semántico pharma del tamaño esperado** (~10k-50k nodos, ~50k-200k relaciones, embeddings de 1024 dimensiones):
 
-Para este MLP, YAML inyectado al prompt es suficiente. Cuando el archivo supere ~50 KB o aparezcan 3+ fuentes heterogéneas con relaciones complejas entre sí, conviene migrar a **Amazon Neptune** como grafo semántico queryable. No es parte del MLP base.
+- 128 m-NCU probablemente alcanza para el MLP inicial
+- Costo siempre-on: **~$2,000-2,100/mes**
+- Se puede pausar al 10% del precio (~$200/mes cuando pausado), útil para staging
+- En producción, típicamente se mantiene siempre-on para evitar latencia de arranque
 
-### Validación del YAML
+Este es el componente de data engineering más caro del stack. Tiene que justificarse frente al cliente, y **el spike debe dimensionar el grafo real antes de comprometer este número**.
 
-Un paso a menudo ignorado: testear que el agente con la capa semántica responde bien las 12 preguntas de referencia. Se arma un test suite que corre contra el agente con prompts conocidos y chequea que genera el SQL correcto (o invoca el tool correcto). Este test corre antes de cada redeploy del `semantic_layer.yaml`.
+### Alternativa económica si el costo no justifica
 
+Si durante el spike el grafo resulta más chico de lo esperado, o si el cliente tiene restricción de costo, la alternativa es:
+
+- **OpenSearch Serverless** como vector store (~$700-1,200/mes)
+- **YAML estructurado** con las relaciones, inyectado al system prompt
+- **Bedrock Knowledge Bases** orquestando embeddings y retrieval
+
+Esto reduce el costo significativamente, al precio de perder traversals multi-hop. El spike debe indicar si pharma realmente los necesita o si un vector store plano alcanza.
+
+### Construcción y mantenimiento del grafo
+
+El grafo **no se construye una vez y se olvida**. Requiere:
+
+- **Ingesta inicial**: bulk load desde S3 con las entidades y relaciones conocidas (~1 día de trabajo con el GraphRAG Toolkit de AWS)
+- **Enriquecimiento manual**: los table owners y SMEs aportan descripciones de métricas, reglas de negocio, definiciones de dominio
+- **Refresh periódico**: cuando cambian los maestros, los ciclos de foco, o aparecen productos nuevos
+- **Validación continua**: correr el test suite de preguntas de referencia después de cada cambio
+
+Este es trabajo de **DataOps continuo** y hay que dimensionarlo en el proyecto.
+
+### Validación de la capa semántica
+
+Un error común es asumir que el LLM "comprende" el grafo y alcanza. Corresponde validar con un test suite.
+
+Se arma un **conjunto de 30-50 preguntas de referencia** que cubren los 3 niveles de complejidad (operativas, rankings, cross-source). Para cada una:
+
+1. Se ejecuta el agente con el grafo cargado
+2. Se captura el SQL que genera
+3. Se valida manualmente que el SQL utiliza los joins correctos, las métricas correctas, y respeta las reglas de negocio
+4. Si no cumple, se ajusta el grafo (agregar aristas explícitas, refinar descripciones, agregar ejemplos)
+
+Este ciclo se repite hasta que el 90%+ de las preguntas de referencia generen SQL correcto. Solo entonces el grafo queda listo para producción.
 
 ---
 
-## Experiencia async para análisis profundo
+## Latencias esperadas y experiencia de usuario
 
-Este es el patrón más importante de todo el MLP. Convierte las preguntas de gran valor en una experiencia aceptable, y es lo que diferencia al agente de un dashboard estático.
+El objetivo es que el APM perciba una conversación, no un proceso batch. El blog oficial de text-to-SQL de AWS reporta que **queries simples se resuelven típicamente en 3-5 segundos end-to-end** con la arquitectura completa. Ese es un buen punto de referencia para el MLP.
 
-### Flujo detallado
+### Qué latencia tolera una conversación
 
-```mermaid
-sequenceDiagram
-    actor APM
-    participant SPA as Frontend SPA
-    participant WS as WebSocket
-    participant AGT as AgentCore
-    participant Q as SQS
-    participant W as Lambda Worker
-    participant AT as Athena
-    participant ST as DynamoDB + S3
-    participant NT as SNS / Push
+La percepción de "rápido" vs "lento" en un chat con agente no es lineal con la latencia:
 
-    APM->>SPA: "¿Qué médicos crecen en foco y los visito poco?"
-    SPA->>WS: enviar prompt
-    WS->>AGT: invocar agente
-    AGT->>AGT: analiza pregunta, detecta que es carril async
+- **Menos de 500 ms de datos**: se percibe instantáneo. Claude apenas terminó el prefacio cuando el dato está listo.
+- **500 ms – 2 s**: aceptable. El streaming de Claude cubre la espera naturalmente.
+- **2 – 4 s**: límite superior tolerable. Claude acompaña con un prefacio más extenso ("dame un segundo, cruzo las prescripciones con tu cartera..."). Se percibe espera pero sin fricción.
+- **4 – 8 s**: la percepción empieza a degradarse. El usuario empieza a mirar el spinner.
+- **Más de 8 s**: la experiencia conversacional se degrada notoriamente.
 
-    Note over AGT: Invoca tool despachar_analisis_profundo
+### Desglose del total end-to-end
 
-    AGT->>Q: enqueue job_id + pregunta + apm_id + contexto
-    AGT-->>WS: stream respuesta inmediata
-    WS-->>SPA: "Estoy cruzando cartera + prescripciones + foco. Te aviso cuando termine (~45 s)."
-    SPA-->>APM: muestra chip "Análisis en curso"
-
-    Note over APM,SPA: El APM sigue usando la app libremente
-
-    Q->>W: trigger Lambda worker
-    W->>AT: query 1: cartera del APM + productos foco
-    AT-->>W: resultado
-    W->>AT: query 2: prescripciones + EVO trimestral por médico
-    AT-->>W: resultado
-    W->>AT: query 3: join via maestro_medicos, ranking final
-    AT-->>W: resultado
-    W->>W: aplicar scoring, generar reporte
-    W->>ST: guardar resultado (JSON + gráficos en S3)
-    W->>NT: publicar notificación
-
-    NT-->>SPA: push "Tu análisis está listo 🎯"
-    APM->>SPA: abre la notificación
-    SPA->>ST: GET resultado
-    ST-->>SPA: reporte estructurado
-    SPA-->>APM: renderiza tarjeta con ranking + explicación
-```
-
-### Qué ve el APM
-
-**Momento 1 — pregunta y ack inmediato** (2 segundos):
+El tiempo total que el APM percibe se compone de:
 
 ```
-APM: "Recomendame a qué médicos debería visitar según sus prescripciones
-     y mis productos foco."
-
-Agente: Perfecto, voy a cruzar tu cartera de médicos con el histórico
-        de prescripciones de los últimos 12 meses y tus productos foco
-        del ciclo actual. Es un análisis que requiere un poco de tiempo
-        (hasta un minuto). Te aviso cuando esté listo — podés seguir
-        trabajando mientras tanto.
-
-        [Chip en pantalla: "Análisis en curso • Recomendación de visitas"]
+Tiempo total = Claude (thinking + tool invocation)
+             + GraphRAG retrieval
+             + SQL generation + validation
+             + SQL execution
+             + Claude (streaming response)
 ```
 
-**Momento 2 — el APM sigue trabajando** (45 segundos)
+Con la arquitectura del patrón oficial:
 
-El APM navega el dashboard, mira la agenda de hoy, hace otras preguntas cortas. El chip sigue visible en una esquina indicando que hay un análisis en proceso.
+- **Claude thinking + tool calls**: ~800 ms - 1.5 s
+- **GraphRAG retrieval (Neptune Analytics)**: ~100-400 ms
+- **SQL generation + validation**: ~400-800 ms (con function calling y AST validator)
+- **SQL execution (Redshift Serverless)**: ~200 ms - 2 s según complejidad y cache hit
+- **Claude streaming response**: ~1-2 s
+- **Total**: **~2.5 - 6.5 segundos** para la mayoría de los casos
 
-**Momento 3 — notificación cuando está listo**
+### Cómo se posiciona cada tipo de pregunta
 
-```
-🎯 Tu análisis está listo
+**Preguntas operativas (DynamoDB hot path)**: 10-50 ms de datos → total ~2-3 s end-to-end.
 
-Recomendación de visitas priorizadas:
-1. Dra. Florencia Peralta — crecimiento +18% en ALACIR, visitada hace 45 días
-2. Dr. Nicolás Peralta — prescribe APSICO (no foco) pero nunca PAMOXET
-3. Dra. Lucía Giménez — EVO positiva en foco, cadencia trimestral incumplida
-4. ...
+**Preguntas de rankings (Redshift con materialized views)**:
+- Cache hit: 20-100 ms → total ~2.5-3.5 s
+- Cache miss: 400-900 ms → total ~3-4 s
 
-[Ver análisis completo]  [Pedir reestructurar agenda]
-```
+**Preguntas cross-source (Redshift con joins multi-tabla)**:
+- Con MV que cubre la agregación: 500 ms - 1.5 s → total ~3.5-5 s
+- Sin MV, ad-hoc: 1-3 s P50, 3-4 s P95 → total ~4-6 s
 
-### Componentes del carril async
+**Proyección**: 80-90% de las preguntas deberían caer en rango aceptable (menos de 5 s). El 10-20% restante requiere mitigaciones (materialized views adicionales, streaming narrativo más rico).
 
-**SQS (cola de trabajos)**
-- Recibe los jobs serializados (apm_id, pregunta, contexto)
-- Permite al agente responder inmediatamente sin esperar el cómputo
-- Retry automático si el worker falla
-- Costo: <$1/mes para este volumen
+### Qué hacer si P95 se degrada
 
-**Worker (Lambda o Fargate)**
-- Lambda de hasta 10 minutos si el análisis es simple
-- Fargate task si requiere más tiempo o más memoria
-- El worker tiene su propia capa semántica para entender la pregunta y ejecutar la serie de queries Athena
-- Opcionalmente invoca a Claude Opus de nuevo para generar un resumen en lenguaje natural del resultado
-- Costo: pocos centavos por ejecución
+Si el spike muestra P95 elevado en algunas preguntas cross-source complejas, existen tres mitigaciones:
 
-**Storage del resultado**
-- **DynamoDB** para la metadata del análisis (job_id, estado, timestamp, resumen corto)
-- **S3** para payloads más pesados (tablas de datos, JSON completo, gráficos generados)
-- **TTL de 7 días**: si el APM no consulta el resultado en 7 días, se borra automáticamente
+1. **Materialized views adicionales** para las agregaciones costosas. No limita al LLM, solo acelera.
+2. **Streaming narrativo más rico** — Claude cubre la latencia con explicación de qué está procesando
+3. **Question decomposition + parallel execution** — cuando una pregunta compleja se descompone en subpreguntas independientes y se ejecutan en paralelo, la latencia total es el máximo de los tiempos individuales, no la suma
 
-**Notificación al APM**
-- **WebSocket push** si el APM sigue conectado (común, dado que los APMs trabajan con la app abierta)
-- **SNS mobile push** si la app tiene soporte PWA instalada
-- **Email** como fallback si el APM cerró la app (opcional)
-
-### Ventajas de este patrón
-
-1. **No hay timeout que importe**. El WebSocket del chat solo carga el ack de 2 segundos. El cómputo largo corre en un worker sin límite de API Gateway ni AgentCore session.
-2. **El APM sigue productivo**. No se queda esperando un spinner. Puede hacer otras preguntas, navegar, llamar a un médico.
-3. **Escala bien**. Múltiples análisis en paralelo no bloquean al agente — cada uno es un worker independiente.
-4. **Reintento automático**. Si un worker falla, SQS lo reintenta. El APM ni se entera.
-5. **Mejora la percepción de valor**. Un análisis que se siente "profesional" — el APM asocia latencia con profundidad.
-
+El patrón oficial de AWS no recurre a experiencias asincrónicas con notificación diferida — la decomposition + paralelismo + streaming sincronizado cubren el rango de latencias esperables para pharma.
 
 ---
 
-## Latencias esperadas por tipo de pregunta
+## Spike de validación antes de comprometer arquitectura
 
-Tabla de referencia que agrupa preguntas típicas, su carril, y el desglose de tiempo esperado. Los tiempos son estimaciones razonables basadas en benchmarks de AWS; cada caso real debe medirse.
+Antes de comprometer la arquitectura al cliente, se realiza un spike de 5-7 días con objetivos medibles. El spike es lo que permite reemplazar estimaciones por mediciones y justificar cada pieza del stack frente al cliente.
 
-| Pregunta | Carril | Tool data | Claude (tokens) | Total percibido |
-|---|---|---|---|---|
-| "¿Cuándo fue la última visita al Dr. X?" | Instantáneo | DDB 15 ms | ~800 ms | **~2 s** |
-| "¿Qué médicos tengo en Belgrano?" | Instantáneo | DDB GSI 30 ms | ~1 s | **~2.5 s** |
-| "¿Cuáles son mis visitas de hoy?" | Instantáneo | DDB Query 20 ms | ~900 ms | **~2 s** |
-| "¿Cuáles son los 5 productos que más prescribe el Dr. X?" | Conversacional (cache hit) | Redis 5 ms | ~1.2 s | **~3 s** |
-| "¿Cuáles son los 5 productos que más prescribe el Dr. X?" | Conversacional (cache miss) | Athena 1.5 s | ~1.2 s | **~4 s** |
-| "¿Médicos que visito con menos frecuencia?" | Conversacional | Redis / Athena 1 s | ~1.5 s | **~3.5 s** |
-| "¿EVO trimestral negativa en mis productos?" | Conversacional | Athena 2 s | ~1.5 s | **~4.5 s** |
-| "¿A qué médicos visitar para crecer con producto X?" | Async | ack 2 s + job 30-45 s | — | **2 s ack + notif en ~45 s** |
-| "¿Qué médicos crecen en foco y los visito poco?" | Async | ack 2 s + job 45-60 s | — | **2 s ack + notif en ~60 s** |
-| "Recomendame médicos según prescripciones y foco" | Async | ack 2 s + job 30-60 s | — | **2 s ack + notif en ~45 s** |
+### Objetivos del spike
 
-### Observaciones
+1. **Medir P50 y P95 reales** de queries canónicas contra Redshift Serverless con datos reales del cliente
+2. **Dimensionar Neptune Analytics** con el grafo real (cuántos m-NCU hacen falta)
+3. **Validar cobertura de los maestros de integración** (qué porcentaje de la cartera queda con huecos)
+4. **Estimar costos operativos reales** según volumen proyectado
+5. **Validar que el patrón text-to-SQL funciona** con 15-20 preguntas representativas del cliente
 
-- **Las preguntas de bajo valor son las más frecuentes** (10x/día por APM). Optimizar su latencia es lo que hace sentir rápido al sistema.
-- **Las preguntas de gran valor son las más diferenciadoras** (1-3x/día por APM). Aceptar 45 segundos con buena UX async es mucho mejor que bajar la calidad del análisis para forzar latencia <5 s.
-- **Claude domina el tiempo total en los carriles 1 y 2**. La única forma de bajar más es usar un modelo más rápido (Claude Sonnet en lugar de Opus) o reducir la longitud de la respuesta. La optimización de data en esos carriles tiene rendimiento decreciente.
-- **El carril async saca a Claude del camino crítico**. El worker puede invocar Claude para el resumen final pero eso no bloquea al APM.
+### Plan del spike
+
+#### Día 1-2 — Ingesta mínima
+
+- Cargar 1 mes de prescripciones CloseUp reales a S3 Parquet
+- Cargar 1 mes de ventas IQVIA reales
+- Cargar snapshot del CRM interno
+- Cargar maestros de integración
+- Todo particionado como lo haría producción
+
+#### Día 3 — Setup de motores
+
+- Crear Redshift Serverless con configuración base (8 RPU)
+- Configurar Glue Data Catalog compartido
+- Materializar 3-4 views para agregaciones base
+
+#### Día 4 — Grafo semántico mínimo
+
+- Crear Neptune Analytics con capacidad mínima (128 m-NCU)
+- Cargar entidades principales (Medico, Producto, Mercado, APM, Metrica)
+- Cargar aristas de cruce (mapeos de maestros, relaciones de foco)
+- Generar embeddings con Bedrock y cargarlos al vector index
+
+#### Día 5-6 — Benchmark
+
+Seleccionar **15-20 queries representativas** que cubran los 3 niveles:
+
+- 5 operativas (1 tabla, filtro simple)
+- 5 de rankings (1-2 tablas, agregación)
+- 5-10 cross-source (3+ tablas con joins vía maestros)
+
+Para cada query, ejecutar **10 veces** y medir:
+
+- Tiempo de ejecución end-to-end (agente + GraphRAG + SQL + síntesis)
+- Bytes escaneados en Redshift
+- RPU-segundos utilizados
+- Hit rate del grafo en GraphRAG
+- P50 y P95
+
+Adicionalmente medir:
+
+- **Cobertura del maestro de productos**: % de productos del laboratorio con mapeo CUP e IQVIA
+- **Cobertura del maestro de médicos**: % de médicos de cartera con `CDGMED`
+- **Tamaño del grafo cargado**: nodos, aristas, memoria ocupada en m-NCU
+
+#### Día 7 — Análisis y decisión
+
+- Consolidar mediciones en un reporte
+- Proyectar costos mensuales según patrón de uso esperado
+- Validar sizing de Neptune Analytics (128 m-NCU alcanza o hay que escalar)
+- Identificar queries que se benefician de tratamiento especial (MVs, rediseño de grafo)
+
+### Criterios de decisión
+
+**La arquitectura propuesta se confirma si**:
+
+- P50 de queries cross-source está consistentemente por debajo de 2 s
+- P95 de queries cross-source está por debajo de 4 s en el 90% de los casos
+- El grafo semántico cabe en 128-256 m-NCU
+- La cobertura de los maestros supera el 70%
+- 90%+ de las preguntas de referencia generan SQL correcto
+
+**Se considera la alternativa económica si**:
+
+- El grafo resulta más chico de lo esperado y OpenSearch Serverless + YAML alcanza
+- El cliente tiene restricción de costo fuerte que no justifica Neptune Analytics
+- La complejidad de traversals multi-hop no aparece en las preguntas reales
+
+**Se ajusta el diseño si**:
+
+- La cobertura de los maestros es inferior al 50% (sugiere una fase previa de mejora de maestros)
+- Las fact tables son órdenes de magnitud más grandes de lo esperado
+- Aparecen patrones de preguntas que el diseño no contempla
+
 
 ---
 
 ## Plan de evolución por fases
 
-Cada fase es **deployable y operable de forma independiente**, entrega valor medible al cliente, y permite validar asumptions antes de seguir. El camino completo son 5 fases de ~2-3 semanas cada una.
+Cada fase es **deployable y operable de forma independiente**, entrega valor medible, y permite validar supuestos antes de continuar.
 
 ### Fase 0 — Demo actual (ya implementada)
 
-- CSVs sintéticos → DynamoDB → Agent Strands
+- CSVs sintéticos → DynamoDB → Agente Strands
 - 1 APM (Peccy), 12 médicos
-- Stack AgentCore + modo voz Nova Sonic + frontend
-- **Valor**: mostrar capacidad técnica, alineación con el cliente sobre UX
+- Stack AgentCore + modo voz Nova Sonic + frontend React
+- **Valor**: mostrar capacidad técnica, alinear UX con el cliente
 
-### Fase 1 — Ingesta del CRM interno a S3 Iceberg
+### Fase 1 — Spike de validación (1 semana)
 
-**Duración**: 2 semanas
+- Ingesta mínima de datos reales
+- Benchmark Redshift + Neptune Analytics contra queries representativas
+- Medición de cobertura de maestros
+- **Entregable**: reporte con decisión de arquitectura fundamentada en datos
+- **Valor**: evita comprometer una arquitectura antes de tener evidencia
 
-**Qué se hace**:
-- Configurar DMS con credenciales del sistema interno del cliente
-- Replicar las 15+ tablas del CRM interno a `s3://pharmassist-lake/crm/`
-- Glue Crawler descubre el schema y registra en Data Catalog
-- Athena queryea las tablas como prueba
-- Cargar tablas maestras (`maestro_integrador_producto`, `maestro_medicos`)
+### Fase 2 — Ingesta productiva + hot path en DynamoDB (2-3 semanas)
 
-**Valor entregado**: los datos reales del cliente están en AWS y son queryeables. El equipo de datos del cliente valida que los datos llegaron bien.
+- Configurar DMS para el CRM interno, con cadencia nocturna
+- Configurar ingesta de CloseUp e IQVIA con cadencias mensuales
+- Glue Data Catalog con todas las tablas
+- ETL nocturno que mantiene DynamoDB con cartera + agenda + productos foco + últimas visitas
+- Migrar los tools del hot path del agente a datos reales
+- **Valor**: el agente responde preguntas operativas con datos productivos
 
-### Fase 2 — Refill nocturno de DynamoDB + migración del agente a datos reales
+### Fase 3 — Capa semántica con Neptune Analytics + GraphRAG Tool (3-4 semanas)
 
-**Duración**: 2 semanas
+- Desplegar Neptune Analytics con el sizing validado en el spike
+- Construcción inicial del grafo (entidades, relaciones, embeddings)
+- Enriquecimiento con métricas, reglas de negocio, aliases
+- Implementar el `GraphRAG Search Tool` en el agente
+- Test suite de preguntas de referencia
+- **Valor**: el agente entiende el dominio farmacéutico y puede razonar sobre cruces entre fuentes
 
-**Qué se hace**:
-- Glue ETL job nocturno que toma lo relevante de Iceberg y lo escribe en DynamoDB
-- Los 15 tools del agente que hoy leen de DynamoDB siguen funcionando sin cambios — apuntan a datos reales
-- Migración del usuario Peccy a APMs reales del cliente (con sus carteras)
-- Testing contra preguntas de bajo y medio valor
+### Fase 4 — Motor analítico + SQL dinámico (3-4 semanas)
 
-**Valor entregado**: el agente responde preguntas del **carril instantáneo** con datos productivos. Primera demo "real" al cliente con sus propios APMs.
+- Desplegar Redshift Serverless
+- Materializar views base para agregaciones frecuentes
+- Implementar el `SQL Generator` con function calling (structured output)
+- Implementar `AST Validator` con reglas de seguridad pharma
+- Implementar `RLS Injector` automático por `apm_id`
+- **Valor**: el agente responde preguntas de rankings y cross-source con SQL dinámico
 
-### Fase 3 — Ingesta CloseUp + IQVIA + carril conversacional
+### Fase 5 — Orquestación completa y question decomposition (2 semanas)
 
-**Duración**: 3 semanas
+- Supervisor agent con routing entre hot path y analítico
+- Question decomposer para preguntas compuestas
+- Paralelización de subpreguntas independientes
+- Response synthesizer con transparencia del SQL
+- **Valor**: la experiencia conversacional se estabiliza con latencias consistentes
 
-**Qué se hace**:
-- Configurar ingesta mensual de CloseUp y IQVIA a S3 Iceberg
-- Construir `semantic_layer.yaml` con las 3 fuentes, métricas y queries canónicas
-- Agregar tools al agente que queryean Athena cross-source
-- ElastiCache Redis para KPIs pre-computados por APM
-- Glue ETL nocturno que materializa los KPIs del carril conversacional
+### Fase 6 — Hardening y observabilidad (2 semanas)
 
-**Valor entregado**: el agente responde preguntas de **valor medio** (top prescriptores, EVO trimestral, rankings acotados). Este es el primer punto donde el agente hace cosas que un dashboard no.
-
-### Fase 4 — Carril async para análisis profundo
-
-**Duración**: 3 semanas
-
-**Qué se hace**:
-- SQS queue + Lambda worker para jobs async
-- Tool del agente `despachar_analisis_profundo` que encola y responde inmediatamente
-- DynamoDB + S3 para storage de resultados
-- SNS / WebSocket push para notificaciones
-- UI en el frontend: chip de "análisis en curso", panel de análisis, notificaciones
-
-**Valor entregado**: el agente responde las preguntas de **gran valor**. Este es el diferenciador completo del producto. Es el momento del "wow" para los usuarios y stakeholders.
-
-### Fase 5 — Hardening y observabilidad
-
-**Duración**: 2 semanas
-
-**Qué se hace**:
-- Métricas por carril (P50/P95 de latencia, hit rate de Redis, costo Athena)
-- Alertas CloudWatch (latencia degradada, errores de ETL, cola SQS con lag)
+- Métricas por tipo de query (P50/P95 de latencia, costo por query, cache hit rate)
+- Alertas CloudWatch (latencia degradada, errores de ETL, queries con escaneo excesivo)
+- Logging completo del SQL generado para auditoría
 - Load testing con perfil realista (50-200 APMs concurrentes)
 - Documentación operativa para el equipo del cliente
 - Runbooks para incidentes comunes
+- **Valor**: el sistema es observable, operable y productivo
 
-**Valor entregado**: el sistema está listo para producción continua, observable, operable por el equipo del cliente.
+### Fase 7 — Optimización iterativa (continuo)
+
+- Revisión mensual del log de queries SQL generadas
+- Identificación de queries frecuentes que se benefician de nuevas materialized views
+- Enriquecimiento continuo del grafo semántico según feedback
+- Refinamiento del prompt del agente según errores observados
+- **Valor**: el sistema evoluciona con el uso
+
+### Fase 8 — Evolución condicional
+
+Solo si el uso real lo justifica:
+
+- **Test-time parallel compute con majority voting** para preguntas ambiguas
+- **Prompt caching en Bedrock** para optimizar costo de tokens
+- **Migración a Iceberg** si aparecen necesidades concretas (time travel, writers concurrentes)
+- **AgentCore Memory** para memoria persistente entre sesiones del mismo APM
+
+### Total estimado
+
+Fases 1 a 6 = **13-16 semanas** hasta un MLP productivo. Fase 7 es continuo.
 
 
 ---
 
 ## Costos estimados
 
-Estimación mensual para **200 APMs activos** en horario laboral, us-east-1, on-demand. Los números son estimaciones conservadoras basadas en precios públicos de AWS a abril 2026; deben revisarse cada seis meses.
+Los números que siguen son estimaciones para **200 APMs activos** en horario laboral, us-east-1, on-demand. Los precios de AWS fueron validados contra AWS Pricing API en abril 2026. Deben revisarse contra las mediciones reales del spike, que es la referencia confiable.
 
-### Costo por fase
+### Costo por fase del MLP
 
-| Componente | Fase 0 (demo) | Fase 1-2 | Fase 3 | Fase 4-5 |
+| Componente | Fase 0 (demo) | Fase 2 | Fase 3 | Fase 4+ |
 |---|---|---|---|---|
-| Bedrock (Claude Opus 4.6 + Nova Sonic) | ~$750 | ~$750 | ~$850 | ~$900 |
-| AgentCore Runtime | ~$20 | ~$20 | ~$20 | ~$30 |
-| DynamoDB on-demand | ~$10 | ~$35 | ~$35 | ~$35 |
-| Amazon Transcribe (voz) | ~$850 | ~$850 | ~$850 | ~$850 |
-| Lambda + API Gateway | ~$15 | ~$20 | ~$25 | ~$35 |
-| S3 + CloudFront (frontend) | ~$15 | ~$20 | ~$20 | ~$20 |
+| Bedrock (Claude Opus 4.6) | ~$700 | ~$800 | ~$2,500-3,500 | ~$2,500-3,500 |
+| Amazon Transcribe (modo voz) | ~$850 | ~$850 | ~$850 | ~$850 |
+| AgentCore Runtime | ~$15 | ~$20 | ~$20 | ~$20 |
+| DynamoDB on-demand | ~$10 | ~$40 | ~$40 | ~$40 |
+| Lambda + API Gateway | ~$15 | ~$25 | ~$35 | ~$35 |
+| S3 + CloudFront | ~$15 | ~$20 | ~$25 | ~$25 |
 | **AWS DMS (3 fuentes)** | — | ~$25 | ~$25 | ~$25 |
-| **S3 Iceberg + Glue Catalog** | — | ~$15 | ~$25 | ~$30 |
-| **Glue ETL nightly** | — | ~$20 | ~$40 | ~$50 |
-| **Amazon Athena** | — | — | ~$30 (warm queries) | ~$50 (+ carril async) |
-| **ElastiCache Redis** | — | — | ~$15 | ~$15 |
-| **SQS + Lambda worker async** | — | — | — | ~$15 |
-| **SNS notificaciones** | — | — | — | ~$5 |
-| **TOTAL mensual** | **~$1.660** | **~$1.755** | **~$1.935** | **~$2.060** |
-| **Costo por APM / mes** | — | ~$8.8 | ~$9.7 | ~$10.3 |
-| **Costo por APM / día hábil (22d)** | — | ~$0.40 | ~$0.44 | ~$0.47 |
+| **S3 data lake + Glue Catalog** | — | ~$20 | ~$30 | ~$30 |
+| **Glue ETL nocturno** | — | ~$30 | ~$40 | ~$40 |
+| **Neptune Analytics (128 m-NCU)** | — | — | ~$2,000-2,100 | ~$2,000-2,100 |
+| **Redshift Serverless** | — | — | — | ~$1,000-2,000 |
+| **TOTAL mensual** | **~$1,605** | **~$1,830** | **~$5,565-6,665** | **~$6,565-8,665** |
 
-### Observaciones clave
+### Observaciones sobre los costos
 
-**El 80% del costo es Bedrock + Transcribe**, independiente de la arquitectura de datos. Optimizar Athena o DynamoDB tiene rendimiento decreciente frente a optimizar consumo de tokens de Claude o uso de modo voz.
+**Bedrock representa la mayor parte del costo variable**. La estimación ($2,500-3,500/mes en Fase 3+) asume:
 
-**Los componentes de data engineering (DMS + Iceberg + Glue + Athena + Redis) suman ~$135/mes** para 200 APMs. Es barato comparado con el valor de tener las 3 fuentes consolidadas y queryeables.
+- 200 APMs × 20 preguntas/día × 22 días hábiles ≈ 88,000 invocaciones/mes
+- Promedio de 3k tokens input (system prompt + contexto GraphRAG + schema) + 800 tokens output
+- Claude Opus 4.6 con pricing vigente
 
-**Athena escala por TB escaneado, no por query**. Con Iceberg + partitioning agresivo + compresión Parquet, las queries escanean decenas de MB típicamente. 10.000 queries al día cuestan centavos.
+**Con [prompt caching](https://aws.amazon.com/bedrock/prompt-caching/)** habilitado, el costo de input tokens repetidos se reduce aproximadamente al 10% del costo normal. Para system prompts largos y estables como los de este diseño, el ahorro típico es 40-50% del componente Bedrock. Activarlo en Fase 4 es razonable.
 
-**Redis es costo-eficiente con cache warming nocturno**. Una instancia `cache.t4g.small` (~$15/mes) soporta el volumen de KPIs pre-computados para 500 APMs sin problema.
+**Neptune Analytics es el costo fijo más alto**. Se paga por hora mientras el grafo está activo. Validado contra AWS Pricing API:
+
+- 128 m-NCU × $0.030/m-NCU-hora × 730 horas = **~$2,800/mes siempre-on**
+- Con pausas nocturnas (10% del costo cuando pausado) podría bajar a ~$1,800/mes
+- Para producción con APMs que consultan también fuera de horario, típicamente siempre-on
+
+**Redshift Serverless** se paga por RPU-hora cuando hay actividad. Validado: $0.375/RPU-hora on-demand en us-east-1. Con 8 RPU base y uso concentrado en horario laboral (~12 horas/día), el costo estimado es $1,000-2,000/mes. [Serverless Reservations](https://aws.amazon.com/blogs/big-data/save-up-to-24-on-amazon-redshift-serverless-compute-costs-with-reservations/) ofrecen hasta 24% de descuento con compromiso de 1 año.
+
+**Transcribe (~$850/mes)** asume que el modo voz está habilitado. Si el cliente no lo utiliza, este costo no aplica.
+
+**AgentCore Runtime** resulta muy bajo por el modelo de consumo activo: solo se paga CPU y memoria cuando el agente procesa. Los períodos de I/O wait (esperando Claude, Redshift, Neptune) no se cobran. Validado: $0.0895 por vCPU-hora y $0.00945 por GB-hora.
+
+### Costo por APM por día (Fase 4+)
+
+~$33-43/APM/mes ≈ **~$1.50-2/APM/día hábil**.
+
+Este número corresponde contrastarlo frente al costo actual de las herramientas que PharmAssist reemplaza o complementa en el laboratorio.
 
 ### Optimizaciones disponibles post-MLP
 
-Una vez el MLP esté en producción y haya métricas reales, se pueden aplicar:
+Cuando haya métricas reales de uso:
 
-1. **Migrar consultas de bajo valor a Claude Sonnet 4.6 en lugar de Opus**: reduce ~60% del costo Bedrock en el carril instantáneo. Se sacrifica algo de calidad de redacción pero las respuestas siguen siendo buenas.
+- **[Prompt caching](https://aws.amazon.com/bedrock/prompt-caching/)** — ahorro de 40-50% en componente Bedrock
+- **Redshift Serverless Reservations** — hasta 24% de descuento con compromiso anual
+- **Migrar consultas simples a Claude Sonnet** en lugar de Opus para el síntesis final
+- **Pausado nocturno de Neptune Analytics** si el uso fuera de horario es despreciable
+- **Intelligent tiering en S3** para el lake
+- **Archivar prescripciones > 24 meses a Glacier**
+- **AgentCore Runtime** ya factura solo por uso activo — no hay optimización adicional
 
-2. **Prompt caching de Anthropic**: el system prompt + capa semántica son largos y estables. Con prompt caching, Bedrock cobra solo 10% del input después de la primera request. Ahorro típico: 40-50% del costo de input tokens.
-
-3. **Provisioned throughput para Bedrock** si el volumen de uso se estabiliza: descuentos de hasta 50% sobre on-demand para Claude con compromiso mensual.
-
-4. **Redis Serverless** si el uso es variable: cobra solo por ECU-hour activo, útil en entornos con picos diarios concentrados.
-
-5. **Archivar prescripciones > 24 meses a S3 Glacier**: reduce storage cost del lake en ~60% para esa partición.
-
-6. **Intelligent tiering en S3** para el lake: mueve automáticamente datos fríos a Infrequent Access con descuento de 40%.
 
 ---
 
-## Resumen ejecutivo
+## Riesgos abiertos
 
-El MLP productivo de PharmAssist para la industria farmacéutica argentina se construye sobre **tres pilares**:
+Esta sección existe para explicitar los puntos que requieren validación continua durante el proyecto.
 
-**Pilar 1 — Data lake unificado**. Las 3 fuentes (sistema interno + CloseUp + IQVIA) replicadas a S3 Iceberg con cadencias independientes. Las tablas maestras de integración permiten los joins cross-source en query time. El lake es la fuente única de verdad analítica.
+### 1. Las latencias dependen de mediciones pendientes
 
-**Pilar 2 — Tres carriles de respuesta con SLA propio**. Instantáneo (DynamoDB, <3 s), conversacional (Redis + Athena, 2-5 s), y análisis profundo async (SQS + worker, 15-60 s con notificación). Cada pregunta se enruta al carril correcto automáticamente por decisión del LLM.
+El análisis de latencia se apoya en números del blog oficial de AWS text-to-SQL y estimaciones razonables para cada componente. Hasta ejecutar el spike contra los datos reales del cliente, estos números son hipótesis. Si resultan optimistas, corresponde ajustar la arquitectura.
 
-**Pilar 3 — Capa semántica en el agente**. Un `semantic_layer.yaml` con entidades, métricas, queries canónicas y reglas de negocio, inyectado al system prompt. El LLM entiende productos foco, EVO trimestral, market share y cruces entre fuentes. Esto permite responder preguntas nuevas sin redeploy de código.
+### 2. La cobertura de los maestros puede ser menor de la esperada
 
-**La arquitectura responde al dilema original** de cómo dar "insights on-the-go" a los APMs sin comprometer latencia ni flexibilidad. Las preguntas de bajo valor responden tan rápido como un dashboard. Las de gran valor ofrecen análisis que ningún dashboard puede dar, con una experiencia async que no obliga al usuario a esperar mirando una pantalla.
+Si el cliente tiene un maestro de médicos con 50% de cobertura, los resultados del agente tendrán huecos significativos. Mitigaciones:
 
-**El camino a producción** es de ~12 semanas divididas en 5 fases. Cada fase entrega valor medible y permite al cliente validar asumptions antes de comprometer la siguiente inversión. El costo operativo se estabiliza en ~$2.000/mes para 200 APMs, con 80% en Bedrock y Transcribe (capacidades cognitivas del producto) y solo 20% en infraestructura de datos.
+- Validar cobertura en el spike
+- Si la cobertura es baja, incluir una fase previa de mejora de maestros antes del MLP
+- Comunicar explícitamente los huecos al APM en cada respuesta
+
+### 3. El dimensionamiento de Neptune Analytics es una incógnita
+
+128 m-NCU es una estimación inicial razonable, pero el tamaño real del grafo depende de:
+
+- Cuántas entidades concretas aparecen en el CRM del cliente
+- Cuántos embeddings se generan y con qué dimensionalidad
+- Cuántas relaciones cruzadas requiere el dominio
+
+Si el sizing real requiere 256 o 512 m-NCU, el costo mensual se duplica o cuadruplica. El spike debe dar la respuesta.
+
+### 4. El SQL generado requiere controles robustos
+
+El patrón oficial aborda los riesgos de SQL generado por LLM mediante function calling + AST validation + RLS injection + retry loop. Implementar estos controles bien es trabajo serio. No son opcionales.
+
+### 5. El costo de Bedrock es la mayor variable
+
+Con 200 APMs haciendo 20 preguntas/día, el costo Bedrock puede variar entre $1,500 y $5,000/mes según:
+
+- Cuántas preguntas invocan el pipeline completo (con contexto GraphRAG extenso)
+- Si se usa Opus 4.6 u otro modelo más económico para partes del pipeline
+- Si se aplica prompt caching
+
+El presupuesto debe ser transparente y monitoreable desde Fase 2.
+
+### 6. El mantenimiento de la capa semántica es DataOps continuo
+
+El grafo en Neptune Analytics no es "desplegar una vez". Cada cambio en las fuentes (CloseUp agrega una columna, el laboratorio cambia su estructura de líneas, aparecen productos nuevos) requiere actualizar el grafo, correr el test suite, y validar que el agente sigue respondiendo correctamente. El cliente debe asumir este trabajo o contratarlo.
+
+### 7. El modo voz con Nova Sonic tiene consideraciones operativas
+
+Sesiones de 8 minutos máximo, con reconexión. Funciona bien para consultas cortas. En conversaciones largas por voz, la experiencia requiere ajustes adicionales. Corresponde evaluar si el modo voz va al MLP o se incorpora en fase posterior.
+
+### 8. "Hablar con los datos" crea expectativas que corresponde acotar
+
+Si se presenta el agente como "preguntá lo que quieras", el APM podría preguntar temas fuera del dominio (pronósticos, análisis de sentimiento, comparaciones con competidores que no están en los datos). La capa semántica tiene un alcance definido y el agente debe poder comunicar "esta pregunta excede el dominio disponible con los datos actuales". Requiere diseño explícito del **scope del agente** y comunicación clara al APM.
+
+---
+
+## Resumen
+
+El MLP productivo de PharmAssist se apoya en **cinco decisiones principales**, alineadas con patrones oficiales publicados por AWS:
+
+**1. Data lake en S3 como fuente única de verdad analítica**, con las 3 fuentes replicadas con sus propias cadencias. DynamoDB se mantiene para el hot path (cartera, agenda, foco). Los maestros de integración se tratan como ciudadanos de primera clase del proyecto.
+
+**2. Redshift Serverless como motor analítico** para queries dinámicas generadas por el LLM. Decisión que se valida contra datos reales del cliente en el spike antes de comprometer.
+
+**3. Neptune Analytics como capa semántica GraphRAG** — grafo + vector search integrado. Reemplaza el enfoque de YAML inyectado al prompt. El [GraphRAG Toolkit open-source de AWS](https://aws.amazon.com/about-aws/whats-new/2025/01/amazon-neptune-open-source-graphrag-toolkit/) provee la base técnica. Alternativa económica con OpenSearch + YAML si el grafo resulta más chico.
+
+**4. Agente con libertad para generar SQL dinámico**, sostenido por el patrón oficial de AWS text-to-SQL: function calling para structured output, AST validator para safety, RLS injector automático, retry loop con feedback. Supervisor agent en AgentCore Runtime con question decomposition para preguntas compuestas.
+
+**5. Experiencia conversacional sincrónica**. Objetivo: 80-90% de las preguntas responden en menos de 5 segundos end-to-end. Sin carril asincrónico como patrón central — se mitiga con streaming narrativo, materialized views y paralelización de subpreguntas.
+
+**Lo que este documento deliberadamente no cierra**:
+
+- El dimensionamiento exacto de Neptune Analytics
+- El costo operativo exacto (depende del volumen de uso real)
+- El timeline exacto del MLP (depende de la cobertura de los maestros del cliente)
+- Si el modo voz con Nova Sonic va al MLP inicial o se incorpora posteriormente
+- Si se requiere eventualmente test-time parallel compute o AgentCore Memory
+
+Son decisiones que se toman con información que aún no está disponible. El rol de este documento es presentar el marco de análisis, los trade-offs, y el camino de validación a través del spike.
 
 ---
 
 ## Referencias
 
-- [AWS DMS — Database Migration Service](https://docs.aws.amazon.com/dms/)
-- [Apache Iceberg on AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/apache-iceberg-on-aws/introduction.html)
-- [Amazon Athena](https://docs.aws.amazon.com/athena/)
-- [ElastiCache for Redis](https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/WhatIs.html)
-- [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
+### Patrones de referencia oficiales AWS
+
+- [Text-to-SQL solution powered by Amazon Bedrock](https://aws.amazon.com/blogs/machine-learning/text-to-sql-solution-powered-by-amazon-bedrock/) — patrón oficial de la arquitectura multi-agente con GraphRAG, function calling y AST validation
+- [Implement agentic analytics based on Redshift MCP Server + Strands + AgentCore Runtime](https://aws.amazon.com/cn/blogs/china/implement-agentic-analytics-based-on-redshift-mcp-server-sdk-runtime/) — caso de referencia del stack completo
+- [Choosing the right approach for generative AI-powered structured data retrieval](https://aws.amazon.com/blogs/machine-learning/choosing-the-right-approach-for-generative-ai-powered-structured-data-retrieval/) — cinco patrones distintos y cuándo aplica cada uno
+- [Accelerating SQL analytics with Amazon Redshift MCP server](https://aws.amazon.com/blogs/big-data/accelerating-sql-analytics-with-amazon-redshift-mcp-server/) — MCP server open-source para Redshift
+- [Amazon Neptune now supports open-source GraphRAG toolkit](https://aws.amazon.com/about-aws/whats-new/2025/01/amazon-neptune-open-source-graphrag-toolkit/) — toolkit oficial para construir el grafo
+
+### Documentación de servicios
+
+- [Amazon Bedrock AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agents-tools-runtime.html)
+- [Amazon Bedrock AgentCore Pricing](https://aws.amazon.com/bedrock/agentcore/pricing/)
+- [Amazon Bedrock prompt caching](https://aws.amazon.com/bedrock/prompt-caching/)
+- [Amazon Neptune Analytics](https://docs.aws.amazon.com/neptune-analytics/latest/userguide/what-is-neptune-analytics.html)
+- [Amazon Neptune Pricing](https://aws.amazon.com/neptune/pricing/)
+- [Amazon Redshift Serverless](https://docs.aws.amazon.com/redshift/latest/mgmt/serverless-whatis.html)
+- [Amazon Redshift Pricing](https://aws.amazon.com/redshift/pricing/)
+- [AWS Database Migration Service](https://docs.aws.amazon.com/dms/)
+- [Amazon Quick Suite](https://aws.amazon.com/quicksuite/)
+
+### Frameworks
+
+- [Strands Agents SDK](https://strandsagents.com/)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+
+### Proveedores de datos de la industria pharma
+
 - [CloseUp Solutions](https://www.closeupsolutions.com/) — datasets de prescripciones
 - [IQVIA](https://www.iqvia.com/) — datasets de ventas de mercado farmacéutico
