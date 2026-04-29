@@ -7,6 +7,7 @@ frontend/.env
 frontend/.env.local
 problematica
 docs/road-to-prod.html
+docs/road-to-prod.template.html
 docs/PRESENTACION.md
 
 # === Python ===
