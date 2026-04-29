@@ -6,6 +6,8 @@
 frontend/.env
 frontend/.env.local
 problematica
+docs/road-to-prod.html
+docs/PRESENTACION.md
 
 # === Python ===
 __pycache__/
