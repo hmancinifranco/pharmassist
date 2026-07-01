@@ -31,6 +31,10 @@ logging.basicConfig(level=logging.INFO)
 # Configuration from environment variables
 # ---------------------------------------------------------------------------
 
+# TEXT_AGENT_ARN: ARN del Unified Agent (CodeAgent) desplegado en AgentCore.
+# Se configura via -env TEXT_AGENT_ARN="$AGENTCORE_AGENT_ARN" en agentcore deploy.
+# El Unified Agent acepta payload {prompt, apm_id, mode: "voice"} y responde
+# con {result: str, success: bool, retries: int}.
 TEXT_AGENT_ARN = os.environ.get("TEXT_AGENT_ARN", "")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
