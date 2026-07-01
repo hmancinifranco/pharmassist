@@ -667,6 +667,14 @@ Stack: [Strands Agents SDK](https://strandsagents.com/), [Amazon Bedrock AgentCo
 
 Esta implementación es un **demo técnico** optimizado para clarificar conceptos y facilitar el onboarding. Para llevarla a un **Minimum Lovable Product (MLP) productivo** que soporte cientos de APMs con datos corporativos vivos, ver [`docs/road-to-prod.md`](docs/road-to-prod.md) — caso de estudio del camino de evolución para un laboratorio farmacéutico real, con ingesta desde 3 fuentes (CRM interno + CloseUp + IQVIA), data lake con Apache Iceberg, los 3 carriles de respuesta (instantáneo / conversacional / análisis profundo async), capa semántica para el agente y plan por fases con costos estimados.
 
+### POC: CodeAgent con Aurora PostgreSQL
+
+El directorio `produccion-poc/` contiene un **Proof of Concept** que valida la factibilidad de operar PharmAssist con el modelo de datos completo del cliente (21 tablas, 2M+ filas, JOINs de 5-6 niveles) usando un CodeAgent que genera SQL dinámicamente.
+
+**Resultado**: 85.7% accuracy (12/14 preguntas correctas) con datos realistas en <6s por interacción.
+
+Ver [`produccion-poc/README.md`](produccion-poc/README.md) para setup, deploy y teardown.
+
 ### Referencias
 
 La implementación del modo voz (BidiAgent + Nova Sonic + conexión SigV4 directa desde el browser) está basada en el sample oficial de AWS:
