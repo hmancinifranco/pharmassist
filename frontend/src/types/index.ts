@@ -64,6 +64,10 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   sources?: string[];
+  /** Datos estructurados del AgentResponse (tabla, gráfico, SQL, sugerencias) */
+  structured?: import('./agent').StructuredData;
+  /** Indica si el mensaje es un error del servidor */
+  isError?: boolean;
 }
 
 /** Minuta de visita generada por IA */

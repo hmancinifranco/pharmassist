@@ -13,17 +13,26 @@ import Typography from '@mui/material/Typography';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import pillAIIcon from '../../assets/AIPill-2.png';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import useAppStore from '../../stores/useAppStore';
+import { StructuredResponse } from './StructuredResponse';
 import type { ChatMessage } from '../../types';
 
 /* ── Message bubble ──────────────────────────────────────────────────────── */
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({
+  message,
+  onSuggestionClick,
+}: {
+  message: ChatMessage;
+  onSuggestionClick?: (text: string) => void;
+}) {
   const isUser = message.role === 'user';
+  const isError = message.isError;
 
   return (
     <Stack
@@ -52,11 +61,19 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <Box
         sx={{
           maxWidth: '85%',
-          bgcolor: isUser ? undefined : 'action.hover',
+          bgcolor: isError
+            ? 'error.light'
+            : isUser
+              ? undefined
+              : 'action.hover',
           background: isUser
             ? 'linear-gradient(135deg, #1565C0 0%, #1E88E5 60%, #42A5F5 100%)'
             : undefined,
-          color: isUser ? '#fff' : 'text.primary',
+          color: isError
+            ? 'error.contrastText'
+            : isUser
+              ? '#fff'
+              : 'text.primary',
           borderRadius: 2.5,
           px: 2,
           py: 1,
@@ -123,10 +140,23 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       >
         {isUser ? (
           <Typography variant="body2">{message.content}</Typography>
+        ) : isError ? (
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ErrorOutlineIcon sx={{ fontSize: 18 }} />
+            <Typography variant="body2">{message.content}</Typography>
+          </Stack>
         ) : (
-          <Typography variant="body2" component="div">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown>
-          </Typography>
+          <>
+            <Typography variant="body2" component="div">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{message.content}</ReactMarkdown>
+            </Typography>
+            {message.structured && (
+              <StructuredResponse
+                structured={message.structured}
+                onSuggestionClick={onSuggestionClick}
+              />
+            )}
+          </>
         )}
       </Box>
 
@@ -195,10 +225,12 @@ function MessageList({
   messages,
   loading,
   toolSteps,
+  onSuggestionClick,
 }: {
   messages: ChatMessage[];
   loading: boolean;
   toolSteps: string[];
+  onSuggestionClick: (text: string) => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -235,7 +267,11 @@ function MessageList({
     <Box sx={{ flexGrow: 1, overflow: 'auto', py: 1 }}>
       <Stack spacing={1.5}>
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} />
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            onSuggestionClick={onSuggestionClick}
+          />
         ))}
         {loading && <LoadingIndicator toolSteps={toolSteps} />}
         <div ref={endRef} />
@@ -311,6 +347,10 @@ export default function ChatPanel() {
   const sendMessage = useAppStore((s) => s.sendMessage);
   const retryWebSocket = useAppStore((s) => s.retryWebSocket);
 
+  const handleSuggestionClick = (text: string) => {
+    sendMessage(text);
+  };
+
   return (
     <Card
       sx={{
@@ -332,7 +372,12 @@ export default function ChatPanel() {
         }}
       >
         {!wsConnected && <ConnectionBanner onRetry={retryWebSocket} />}
-        <MessageList messages={messages} loading={loading} toolSteps={toolSteps} />
+        <MessageList
+          messages={messages}
+          loading={loading}
+          toolSteps={toolSteps}
+          onSuggestionClick={handleSuggestionClick}
+        />
         <MessageInput onSend={sendMessage} disabled={loading} />
       </CardContent>
     </Card>

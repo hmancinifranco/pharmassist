@@ -150,13 +150,23 @@ let _streamingMsgId: string | null = null;
 function _handleWSMessage(msg: WSMessage) {
   const state = useAppStore.getState();
 
+  // Legacy "tools" format (array of step labels)
   if (msg.type === 'tools' && msg.steps) {
     useAppStore.setState({ toolSteps: msg.steps });
     return;
   }
 
-  if (msg.type === 'chunk' && msg.content) {
-    const newContent = state.streamingContent + msg.content;
+  // New WsServerChunk: tool_step (single tool indicator)
+  if (msg.type === 'tool_step' && msg.label) {
+    useAppStore.setState((s) => ({
+      toolSteps: [...s.toolSteps, msg.label!],
+    }));
+    return;
+  }
+
+  if (msg.type === 'chunk' && (msg.content || msg.text)) {
+    const chunkText = msg.content ?? msg.text ?? '';
+    const newContent = state.streamingContent + chunkText;
     // Upsert the streaming assistant message
     if (!_streamingMsgId) {
       _streamingMsgId = crypto.randomUUID();
@@ -186,11 +196,45 @@ function _handleWSMessage(msg: WSMessage) {
       clearTimeout(_chatTimeoutId);
       _chatTimeoutId = null;
     }
-    useAppStore.setState({
-      chatLoading: false,
-      streamingContent: '',
-      toolSteps: [],
-    });
+
+    // New WsServerChunk: "complete" carries a payload with AgentResponse
+    const payload = msg.payload;
+    if (payload && _streamingMsgId) {
+      // Update the streaming message with final content and structured data
+      const finalContent = payload.result ?? state.streamingContent;
+      useAppStore.setState((s) => ({
+        chatMessages: s.chatMessages.map((m) =>
+          m.id === _streamingMsgId
+            ? { ...m, content: finalContent, structured: payload.structured }
+            : m,
+        ),
+        chatLoading: false,
+        streamingContent: '',
+        toolSteps: [],
+      }));
+    } else if (payload && !_streamingMsgId) {
+      // No streaming happened — insert complete message directly
+      const completeMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: payload.result ?? '',
+        timestamp: new Date().toISOString(),
+        structured: payload.structured,
+      };
+      useAppStore.setState((s) => ({
+        chatMessages: [...s.chatMessages, completeMsg],
+        chatLoading: false,
+        streamingContent: '',
+        toolSteps: [],
+      }));
+    } else {
+      // Legacy complete (no payload) — just finalize
+      useAppStore.setState({
+        chatLoading: false,
+        streamingContent: '',
+        toolSteps: [],
+      });
+    }
     _streamingMsgId = null;
     return;
   }
@@ -205,6 +249,7 @@ function _handleWSMessage(msg: WSMessage) {
       role: 'assistant',
       content: msg.message,
       timestamp: new Date().toISOString(),
+      isError: true,
     };
     useAppStore.setState((s) => ({
       chatMessages: [...s.chatMessages, errorMsg],

@@ -32,7 +32,7 @@ export interface ChatWebSocketCallbacks {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** @deprecated Use ChatWebSocketCallbacks instead */
-export type MessageType = 'chunk' | 'complete' | 'error' | 'tools';
+export type MessageType = 'chunk' | 'complete' | 'error' | 'tools' | 'tool_step';
 
 /** @deprecated Use WsServerChunk from types/agent instead */
 export interface WSMessage {
@@ -41,6 +41,16 @@ export interface WSMessage {
   session_id?: string;
   message?: string;
   steps?: string[];
+  /** New protocol: text field from WsChunkMessage */
+  text?: string;
+  /** New protocol: tool label from WsToolStepMessage */
+  label?: string;
+  /** New protocol: tool name from WsToolStepMessage */
+  tool?: string;
+  /** New protocol: AgentResponse payload from WsCompleteMessage */
+  payload?: AgentResponse;
+  /** New protocol: error code from WsErrorMessage */
+  code?: string;
 }
 
 /** @deprecated Use ChatWebSocketCallbacks instead */
