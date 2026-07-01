@@ -61,7 +61,7 @@ class PharmaToolkit:
         - Driver: pg8000 (pure Python, no libpq dependency)
         - Pool: QueuePool with pool_size=5, max_overflow=2
         - pool_pre_ping=True for connection health checks
-        - SSL/TLS enforced via ssl_context=True (pg8000 default CA bundle)
+        - SSL/TLS enforced via ssl_context with RDS CA bundle
         """
         creds = self._get_credentials()
         dbname = creds.get("dbname", "pharmassist_poc")
@@ -70,9 +70,12 @@ class PharmaToolkit:
             f"@{creds['host']}:{creds.get('port', 5432)}/{dbname}"
         )
 
-        # pg8000 accepts ssl_context=True to use default system CA bundle
-        # This enforces TLS on the connection (Requirement 7.5)
+        # Use RDS CA bundle for SSL verification (Requirement 7.5)
+        # The bundle is packaged alongside the agent code
         ssl_context = ssl.create_default_context()
+        ca_bundle = os.path.join(os.path.dirname(__file__), "rds-ca-bundle.pem")
+        if os.path.exists(ca_bundle):
+            ssl_context.load_verify_locations(ca_bundle)
 
         return create_engine(
             url,

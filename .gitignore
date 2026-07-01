@@ -9,6 +9,10 @@ problematica
 docs/road-to-prod.html
 docs/road-to-prod.template.html
 docs/PRESENTACION.md
+docs/reviews/
+.kiro/kiro-aws-blueprint
+docs/DescripcionesTablas.docx
+docs/Preguntas con Prioridades y Origen - Comentarios.docx
 
 # === Python ===
 __pycache__/
@@ -28,6 +32,7 @@ frontend/dist/
 cdk.out/
 # cdk.context.json contiene AWS account IDs — no publicar
 infrastructure/cdk.context.json
+produccion-poc/infrastructure/cdk.context.json
 
 # === AWS / AgentCore ===
 # .bedrock_agentcore.yaml contiene ARNs con account IDs y paths absolutos locales

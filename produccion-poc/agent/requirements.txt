@@ -1,8 +1,10 @@
 strands-agents
 strands-agents-tools
 strands-code-agent
+bedrock-agentcore
 boto3
 pandas
+numpy
 pg8000
 sqlalchemy
 python-dotenv

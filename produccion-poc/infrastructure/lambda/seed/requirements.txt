@@ -1,0 +1,7 @@
+# Dependencies for seed Lambda
+# pg8000: pure-Python PostgreSQL driver (no C compilation needed for Lambda)
+pg8000>=1.31.0
+# pandas: used by catalog generators (return DataFrames)
+pandas>=2.0.0
+# numpy: used by catalog generators for random distributions
+numpy>=1.24.0
