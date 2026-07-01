@@ -1,0 +1,8 @@
+strands-agents
+strands-agents-tools
+strands-code-agent
+boto3
+pandas
+pg8000
+sqlalchemy
+python-dotenv
