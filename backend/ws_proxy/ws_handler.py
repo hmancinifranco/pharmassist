@@ -138,46 +138,63 @@ def _post(apigw, connection_id: str, data: dict) -> None:
 
 
 def _handle_message(event, connection_id, domain, stage):
-    """Handle sendMessage route — forward to AgentCore and stream back."""
+    """Handle sendMessage route — forward to AgentCore and stream back.
+
+    Security: validates JWT on every message to extract apm_id from claims.
+    Never trusts client-sent apm_id — always derives it from the token.
+    Uses connectionId as session_id for AgentCore session correlation.
+    """
     apigw = boto3.client(
         "apigatewaymanagementapi",
         endpoint_url=f"https://{domain}/{stage}",
     )
     start_time = time.time()
     apm_id = ""
-    session_id = ""
+    session_id = connection_id  # Always use connectionId as session_id
 
     try:
         body = json.loads(event.get("body", "{}"))
         data = body.get("data", {})
         prompt = data.get("prompt", "")
-        session_id = data.get("session_id", connection_id)
 
-        # Extract apm_id — WebSocket API GW does NOT inject JWT claims
-        # into sendMessage events, so we read it from the client payload.
-        apm_id = data.get("apm_id", "")
+        # ─── JWT Validation (AgentCore Identity flow) ────────────────────
+        # The client sends its token in the message payload for per-message
+        # validation. This ensures apm_id is always derived from verified
+        # claims, not from untrusted client data.
+        token = data.get("token", "")
 
-        # Fallback: try authorizer context (in case future WS authorizer support)
-        if not apm_id:
-            claims = event.get("requestContext", {}).get("authorizer", {})
-            apm_id = claims.get("custom:apm_id", "")
-
-        # Fallback: re-validate token from query params
-        if not apm_id:
+        # Fallback: try query params (from $connect)
+        if not token:
             token = (event.get("queryStringParameters") or {}).get("token", "")
-            if token:
-                jwt_claims = _validate_cognito_jwt(token)
-                if jwt_claims:
-                    apm_id = jwt_claims.get("custom:apm_id", "")
 
-        if not prompt:
-            _post(apigw, connection_id, {"type": "error", "message": "El mensaje está vacío."})
-            return {"statusCode": 400}
+        # Validate JWT and extract claims
+        claims = _validate_cognito_jwt(token) if token else None
+
+        if claims is None:
+            _post(apigw, connection_id, {
+                "type": "error",
+                "message": "Sesión expirada. Volvé a iniciar sesión.",
+                "code": "AUTH",
+            })
+            return {"statusCode": 401}
+
+        # Extract apm_id exclusively from validated JWT claims
+        apm_id = claims.get("custom:apm_id", "")
 
         if not apm_id:
             _post(apigw, connection_id, {
                 "type": "error",
-                "message": "No se pudo identificar al APM. Recargá la página e intentá de nuevo.",
+                "message": "No se pudo identificar al APM. Volvé a iniciar sesión.",
+                "code": "AUTH",
+            })
+            return {"statusCode": 401}
+
+        # ─── Input validation ────────────────────────────────────────────
+        if not prompt:
+            _post(apigw, connection_id, {
+                "type": "error",
+                "message": "El mensaje está vacío.",
+                "code": "VALIDATION",
             })
             return {"statusCode": 400}
 
@@ -185,13 +202,17 @@ def _handle_message(event, connection_id, domain, stage):
             _post(apigw, connection_id, {
                 "type": "error",
                 "message": "El asistente no está configurado.",
+                "code": "CONFIG",
             })
             return {"statusCode": 500}
 
-        # Invoke AgentCore Runtime
+        # ─── Invoke AgentCore Runtime ────────────────────────────────────
+        # Pass apm_id (from JWT claims) and session_id (connectionId)
+        # so the agent can scope queries and manage memory per-session.
         payload = json.dumps({
             "prompt": prompt,
             "apm_id": apm_id,
+            "session_id": session_id,
         }).encode("utf-8")
 
         response = agentcore_client.invoke_agent_runtime(
@@ -203,8 +224,9 @@ def _handle_message(event, connection_id, domain, stage):
         # Stream response back to client
         full_response = _stream_response(apigw, connection_id, response)
 
-        # Send completion message
-        _post(apigw, connection_id, {"type": "complete", "session_id": session_id})
+        # Parse and send completion message with full AgentResponsePayload
+        payload = _parse_agent_response(full_response)
+        _post(apigw, connection_id, {"type": "complete", "payload": payload})
 
         duration = time.time() - start_time
         log_entry = {
@@ -242,9 +264,11 @@ def _handle_message(event, connection_id, domain, stage):
             "error": str(e),
         }))
         try:
+            error_code = "TIMEOUT" if "timeout" in str(e).lower() else "INTERNAL"
             _post(apigw, connection_id, {
                 "type": "error",
                 "message": "El asistente no está disponible en este momento.",
+                "code": error_code,
             })
         except Exception:
             pass
@@ -254,11 +278,17 @@ def _handle_message(event, connection_id, domain, stage):
 def _stream_response(apigw, connection_id: str, response: dict) -> str:
     """Stream AgentCore response chunks back to the WebSocket client.
 
+    Protocol (WsServerChunk):
+      - {"type": "chunk", "text": "..."}           → partial text
+      - {"type": "tool_step", "tool": "...", "label": "..."}  → tool activity
+      - {"type": "complete", "payload": {...}}     → final AgentResponsePayload
+      - {"type": "error", "message": "...", "code": "..."}    → failure
+
     Returns the full accumulated response text.
     """
     full_response = ""
     content_type = response.get("contentType", "")
-    tools_sent = False
+    tools_notified: set = set()
 
     if "text/event-stream" in content_type:
         # SSE streaming from AgentCore
@@ -267,30 +297,74 @@ def _stream_response(apigw, connection_id: str, response: dict) -> str:
                 continue
             decoded = line.decode("utf-8") if isinstance(line, bytes) else line
 
-            # Detect tool use events and send tools message
-            if not tools_sent and _is_tool_event(decoded):
-                tool_steps = _extract_tool_steps(decoded)
-                if tool_steps:
-                    _post(apigw, connection_id, {"type": "tools", "steps": tool_steps})
-                    tools_sent = True
+            # Detect tool use events and send tool_step messages
+            if _is_tool_event(decoded):
+                tool_name = _extract_tool_name(decoded)
+                if tool_name and tool_name not in tools_notified:
+                    tools_notified.add(tool_name)
+                    label = _get_tool_label(tool_name)
+                    _post(apigw, connection_id, {
+                        "type": "tool_step",
+                        "tool": tool_name,
+                        "label": label,
+                    })
                 continue
 
             # Extract text content from SSE data lines
             text = decoded[6:] if decoded.startswith("data: ") else decoded
             if text.strip():
                 full_response += text
-                _post(apigw, connection_id, {"type": "chunk", "content": text})
+                _post(apigw, connection_id, {"type": "chunk", "text": text})
     else:
         # JSON response (non-streaming)
         chunks = []
         for chunk in response.get("response", []):
             chunks.append(chunk.decode("utf-8") if isinstance(chunk, bytes) else chunk)
         if chunks:
-            body_json = json.loads("".join(chunks))
-            full_response = body_json.get("result", str(body_json))
-            _post(apigw, connection_id, {"type": "chunk", "content": full_response})
+            raw_body = "".join(chunks)
+            try:
+                body_json = json.loads(raw_body)
+                # If it's a structured response, extract result for streaming
+                result_text = body_json.get("result", str(body_json)) if isinstance(body_json, dict) else str(body_json)
+                full_response = raw_body  # Preserve full JSON for _parse_agent_response
+                _post(apigw, connection_id, {"type": "chunk", "text": result_text})
+            except (json.JSONDecodeError, TypeError):
+                # Non-JSON response — treat as plain text
+                full_response = raw_body
+                _post(apigw, connection_id, {"type": "chunk", "text": raw_body})
 
     return full_response
+
+
+def _parse_agent_response(raw_text: str) -> dict:
+    """Parse the raw agent response into an AgentResponsePayload.
+
+    Tries to interpret the accumulated text as JSON (the agent may return
+    a structured JSON response). Falls back to plain text.
+
+    Returns:
+        Dict matching AgentResponsePayload: {result, structured, success, retries}
+    """
+    # Try parsing as JSON — the unified agent returns structured JSON
+    try:
+        data = json.loads(raw_text)
+        if isinstance(data, dict) and "result" in data:
+            return {
+                "result": data.get("result", ""),
+                "structured": data.get("structured"),
+                "success": data.get("success", True),
+                "retries": data.get("retries", 0),
+            }
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Fallback: treat as plain text result
+    return {
+        "result": raw_text,
+        "structured": None,
+        "success": True,
+        "retries": 0,
+    }
 
 
 def _is_tool_event(line: str) -> bool:
@@ -298,27 +372,53 @@ def _is_tool_event(line: str) -> bool:
     return "tool_use" in line or "toolUse" in line
 
 
-def _extract_tool_steps(line: str) -> list[str]:
-    """Extract human-readable tool step descriptions from a tool event."""
-    # Map known tool names to Spanish descriptions
-    tool_descriptions = {
-        "buscar_medicos_por_apm": "Buscando médicos en el CRM",
-        "obtener_visitas_planificadas_hoy": "Consultando agenda de hoy",
-        "obtener_historial_visitas": "Revisando historial de visitas",
-        "buscar_medico_por_nombre": "Buscando médico por nombre",
-        "obtener_perfil_medico": "Consultando perfil del médico",
-        "obtener_ventas_por_zona": "Analizando ventas por zona",
-        "obtener_ventas_por_producto": "Analizando ventas por producto",
-        "generar_brief_medico": "Generando brief del médico",
-        "obtener_alertas_sla": "Verificando alertas de SLA",
-        "obtener_cumpleanos_proximos": "Consultando cumpleaños próximos",
-        "generar_mensaje_cumpleanos": "Generando mensaje de cumpleaños",
-        "web_search": "Buscando información en la web",
-        "sugerir_proxima_visita": "Calculando sugerencia de próxima visita",
-        "obtener_minutas_medico": "Consultando notas de visitas previas",
-    }
-    steps = []
-    for tool_name, description in tool_descriptions.items():
+# ─── Tool label mapping (Unified Agent tools) ────────────────────────────────
+
+TOOL_LABELS: dict[str, str] = {
+    "query_db": "Consultando base de datos...",
+    "buscar_info_publica": "Buscando información pública...",
+    "generar_brief": "Generando brief pre-visita...",
+    "obtener_minutas": "Consultando minutas de visitas previas...",
+    "generar_mensaje_cumpleanos": "Generando mensaje de cumpleaños...",
+}
+
+
+def _get_tool_label(tool_name: str) -> str:
+    """Get a user-friendly Spanish label for a tool invocation."""
+    return TOOL_LABELS.get(tool_name, "Procesando consulta...")
+
+
+def _extract_tool_name(line: str) -> str | None:
+    """Extract the tool name from an SSE tool_use event line.
+
+    AgentCore streams tool events as JSON with a 'name' field inside
+    a tool_use block. We try JSON parsing first, then regex fallback.
+    """
+    # Try parsing data payload if SSE formatted
+    data_str = line[6:] if line.startswith("data: ") else line
+    try:
+        data = json.loads(data_str)
+        # AgentCore tool event structures vary; check common shapes
+        if isinstance(data, dict):
+            # Shape: {"type": "tool_use", "name": "query_db", ...}
+            if data.get("name"):
+                return data["name"]
+            # Shape: {"toolUse": {"name": "query_db", ...}}
+            tool_use = data.get("toolUse") or data.get("tool_use")
+            if isinstance(tool_use, dict) and tool_use.get("name"):
+                return tool_use["name"]
+            # Shape: nested content block
+            content = data.get("content") or data.get("delta")
+            if isinstance(content, dict):
+                tool_use_inner = content.get("toolUse") or content.get("tool_use")
+                if isinstance(tool_use_inner, dict) and tool_use_inner.get("name"):
+                    return tool_use_inner["name"]
+    except (json.JSONDecodeError, TypeError):
+        pass
+
+    # Regex fallback: find known tool names in the line
+    for tool_name in TOOL_LABELS:
         if tool_name in line:
-            steps.append(description)
-    return steps if steps else ["Procesando consulta"]
+            return tool_name
+
+    return None
