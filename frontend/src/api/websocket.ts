@@ -75,8 +75,9 @@ export type WSMessageHandler = (msg: WSMessage) => void;
 export class ChatWebSocket {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnects = 3;
+  private maxDelay = 30_000; // Cap at 30 seconds
   private baseDelay = 1000;
+  private intentionalClose = false;
   private callbacks: ChatWebSocketCallbacks;
   private legacyHandler: WSMessageHandler | null = null;
   private token: string;
@@ -120,10 +121,12 @@ export class ChatWebSocket {
   connect() {
     if (!WS_URL) return;
 
+    this.intentionalClose = false;
     const url = `${WS_URL}?token=${encodeURIComponent(this.token)}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
+      console.debug('[ChatWebSocket] Connected');
       this.reconnectAttempts = 0;
       this.callbacks.onStatusChange(true);
     };
@@ -142,19 +145,19 @@ export class ChatWebSocket {
     };
   }
 
-  send(prompt: string, sessionId: string, apmId?: string): boolean {
+  send(prompt: string, sessionId: string, apmId?: string, token?: string): boolean {
     if (this.ws?.readyState !== WebSocket.OPEN) return false;
     this.ws.send(
       JSON.stringify({
         action: 'sendMessage',
-        data: { prompt, session_id: sessionId, apm_id: apmId },
+        data: { prompt, session_id: sessionId, apm_id: apmId, token: token ?? this.token },
       }),
     );
     return true;
   }
 
   disconnect() {
-    this.maxReconnects = 0; // prevent reconnect on intentional close
+    this.intentionalClose = true;
     this.ws?.close();
     this.ws = null;
   }
@@ -225,9 +228,10 @@ export class ChatWebSocket {
   }
 
   private _tryReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnects) return;
+    if (this.intentionalClose) return;
     this.reconnectAttempts++;
-    const delay = this.baseDelay * Math.pow(2, this.reconnectAttempts - 1);
+    const delay = Math.min(this.baseDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxDelay);
+    console.debug(`[ChatWebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
     setTimeout(() => this.connect(), delay);
   }
 }

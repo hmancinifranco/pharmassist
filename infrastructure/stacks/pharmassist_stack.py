@@ -10,6 +10,7 @@ from aws_cdk import (
     Duration,
     BundlingOptions,
     aws_dynamodb as dynamodb,
+    aws_ec2 as ec2,
     aws_iam as iam,
     aws_lambda as _lambda,
     aws_s3 as s3,
@@ -86,9 +87,10 @@ class _LocalBundler:
         if not req_file.exists():
             return False
 
+        import sys
         subprocess.check_call(
             [
-                "pip", "install",
+                sys.executable, "-m", "pip", "install",
                 "-r", str(req_file),
                 "-t", output_dir,
                 "--quiet",
@@ -135,117 +137,9 @@ class PharmAssistStack(Stack):
         removal = RemovalPolicy.DESTROY
 
         # =============================================
-        # DynamoDB Table 1: crm_medicos
-        # =============================================
-        self.medicos_table = dynamodb.Table(
-            self,
-            "MedicosTable",
-            partition_key=dynamodb.Attribute(
-                name="Medico_MN", type=dynamodb.AttributeType.NUMBER
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=removal,
-            point_in_time_recovery=True,
-        )
-        self.medicos_table.add_global_secondary_index(
-            index_name="APM-index",
-            partition_key=dynamodb.Attribute(
-                name="APM", type=dynamodb.AttributeType.STRING
-            ),
-        )
-        self.medicos_table.add_global_secondary_index(
-            index_name="Zona-index",
-            partition_key=dynamodb.Attribute(
-                name="Zona", type=dynamodb.AttributeType.STRING
-            ),
-        )
-
-        # =============================================
-        # DynamoDB Table 2: apm_visitas
-        # =============================================
-        self.visitas_table = dynamodb.Table(
-            self,
-            "VisitasTable",
-            partition_key=dynamodb.Attribute(
-                name="Visita_ID", type=dynamodb.AttributeType.NUMBER
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=removal,
-            point_in_time_recovery=True,
-        )
-        self.visitas_table.add_global_secondary_index(
-            index_name="APM-Fecha-index",
-            partition_key=dynamodb.Attribute(
-                name="APM", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Fecha_Visita", type=dynamodb.AttributeType.STRING
-            ),
-        )
-        self.visitas_table.add_global_secondary_index(
-            index_name="Medico-Fecha-index",
-            partition_key=dynamodb.Attribute(
-                name="Medico_MN", type=dynamodb.AttributeType.NUMBER
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Fecha_Visita", type=dynamodb.AttributeType.STRING
-            ),
-        )
-
-        # =============================================
-        # DynamoDB Table 3: ventas_reportadas
-        # =============================================
-        self.ventas_table = dynamodb.Table(
-            self,
-            "VentasTable",
-            partition_key=dynamodb.Attribute(
-                name="Zona_Producto", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Anio_Mes", type=dynamodb.AttributeType.STRING
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=removal,
-            point_in_time_recovery=True,
-        )
-        self.ventas_table.add_global_secondary_index(
-            index_name="Zona-index",
-            partition_key=dynamodb.Attribute(
-                name="Zona", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Anio_Mes", type=dynamodb.AttributeType.STRING
-            ),
-        )
-
-        # =============================================
-        # DynamoDB Table 4: visitas_planificadas
-        # =============================================
-        self.planificadas_table = dynamodb.Table(
-            self,
-            "PlanificadasTable",
-            partition_key=dynamodb.Attribute(
-                name="APM_Fecha", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Medico_MN", type=dynamodb.AttributeType.NUMBER
-            ),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            removal_policy=removal,
-            point_in_time_recovery=True,
-        )
-        self.planificadas_table.add_global_secondary_index(
-            index_name="APM-Fecha-index",
-            partition_key=dynamodb.Attribute(
-                name="APM", type=dynamodb.AttributeType.STRING
-            ),
-            sort_key=dynamodb.Attribute(
-                name="Fecha_Planificada", type=dynamodb.AttributeType.STRING
-            ),
-        )
-
-        # =============================================
-        # DynamoDB Table 5: minutas_visitas
+        # DynamoDB Table: minutas_visitas
+        # (medicos, visitas, ventas, planificadas tables removed —
+        #  data now served from Aurora PostgreSQL)
         # =============================================
         self.minutas_table = dynamodb.Table(
             self,
@@ -423,6 +317,29 @@ class PharmAssistStack(Stack):
         # =============================================
         # Lambda Function — FastAPI backend (Mangum)
         # =============================================
+
+        # VPC configuration — Lambda needs access to Aurora in ProduccionPocStack VPC
+        poc_vpc_id = os.environ.get("POC_VPC_ID", "")
+        poc_subnet_id = os.environ.get("AGENTCORE_VPC_SUBNET", "")
+        poc_sg_id = os.environ.get("AGENTCORE_VPC_SG", "")
+
+        lambda_vpc_kwargs = {}
+        if poc_vpc_id and poc_subnet_id and poc_sg_id:
+            imported_vpc = ec2.Vpc.from_vpc_attributes(
+                self, "PocVpc",
+                vpc_id=poc_vpc_id,
+                availability_zones=["us-east-1a", "us-east-1b"],
+            )
+            imported_subnet = ec2.Subnet.from_subnet_id(self, "PocSubnet", poc_subnet_id)
+            imported_sg = ec2.SecurityGroup.from_security_group_id(
+                self, "PocSG", poc_sg_id
+            )
+            lambda_vpc_kwargs = {
+                "vpc": imported_vpc,
+                "vpc_subnets": ec2.SubnetSelection(subnets=[imported_subnet]),
+                "security_groups": [imported_sg],
+            }
+
         api_lambda = _lambda.Function(
             self,
             "ApiFunction",
@@ -449,10 +366,6 @@ class PharmAssistStack(Stack):
             memory_size=1024,
             timeout=Duration.seconds(120),
             environment={
-                "MEDICOS_TABLE_NAME": self.medicos_table.table_name,
-                "VISITAS_TABLE_NAME": self.visitas_table.table_name,
-                "VENTAS_TABLE_NAME": self.ventas_table.table_name,
-                "PLANIFICADAS_TABLE_NAME": self.planificadas_table.table_name,
                 "MINUTAS_TABLE_NAME": self.minutas_table.table_name,
                 "AWS_REGION_NAME": os.environ.get("AWS_REGION", "us-east-1"),
                 "AGENTCORE_AGENT_ARN": os.environ.get("AGENTCORE_AGENT_ARN", ""),
@@ -460,15 +373,22 @@ class PharmAssistStack(Stack):
                 "BEDROCK_MODEL_ID": os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-6-v1"),
                 "USER_POOL_ID": self.user_pool.user_pool_id,
                 "AUDIO_BUCKET_NAME": self.audio_bucket.bucket_name,
+                "DB_SECRET_ARN": os.environ.get("DB_SECRET_ARN", ""),
             },
+            **lambda_vpc_kwargs,
         )
 
-        # --- IAM: DynamoDB read/write for all 5 tables ---
-        self.medicos_table.grant_read_write_data(api_lambda)
-        self.visitas_table.grant_read_write_data(api_lambda)
-        self.ventas_table.grant_read_write_data(api_lambda)
-        self.planificadas_table.grant_read_write_data(api_lambda)
+        # --- IAM: DynamoDB read/write for MinutasTable ---
         self.minutas_table.grant_read_write_data(api_lambda)
+
+        # --- IAM: Secrets Manager read for Aurora DB credentials ---
+        db_secret_arn = os.environ.get("DB_SECRET_ARN", "")
+        api_lambda.add_to_role_policy(
+            iam.PolicyStatement(
+                actions=["secretsmanager:GetSecretValue"],
+                resources=[db_secret_arn] if db_secret_arn else ["*"],
+            )
+        )
 
         # --- IAM: Bedrock invoke for birthday message generation ---
         api_lambda.add_to_role_policy(
@@ -706,18 +626,6 @@ class PharmAssistStack(Stack):
         # =============================================
         # Stack Outputs
         # =============================================
-        CfnOutput(self, "MedicosTableName",
-                  value=self.medicos_table.table_name,
-                  description="crm_medicos DynamoDB table name")
-        CfnOutput(self, "VisitasTableName",
-                  value=self.visitas_table.table_name,
-                  description="apm_visitas DynamoDB table name")
-        CfnOutput(self, "VentasTableName",
-                  value=self.ventas_table.table_name,
-                  description="ventas_reportadas DynamoDB table name")
-        CfnOutput(self, "PlanificadasTableName",
-                  value=self.planificadas_table.table_name,
-                  description="visitas_planificadas DynamoDB table name")
         CfnOutput(self, "MinutasTableName",
                   value=self.minutas_table.table_name,
                   description="minutas_visitas DynamoDB table name")

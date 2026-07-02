@@ -20,6 +20,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import useAppStore from '../../stores/useAppStore';
 import { StructuredResponse } from './StructuredResponse';
+import { SuggestionChips } from './SuggestionChips';
 import type { ChatMessage } from '../../types';
 
 /* ── Message bubble ──────────────────────────────────────────────────────── */
@@ -204,7 +205,7 @@ function ConnectionBanner({ onRetry }: { onRetry: () => void }) {
       sx={{ py: 1, px: 2, bgcolor: 'warning.light', borderRadius: 1 }}
     >
       <Typography variant="body2" color="warning.contrastText">
-        No se pudo conectar con el asistente.
+        No se pudo conectar con el asistente. Verificá tu conexión.
       </Typography>
       <Button
         size="small"
@@ -344,8 +345,19 @@ export default function ChatPanel() {
   const loading = useAppStore((s) => s.chatLoading);
   const toolSteps = useAppStore((s) => s.toolSteps);
   const wsConnected = useAppStore((s) => s.wsConnected);
+  const fallbackActive = useAppStore((s) => s.fallbackActive);
   const sendMessage = useAppStore((s) => s.sendMessage);
   const retryWebSocket = useAppStore((s) => s.retryWebSocket);
+
+  // Only show connection banner when BOTH WS and HTTP are failing
+  // (i.e., WS is down, fallback is active, and the last message was an HTTP error)
+  const lastMessage = messages[messages.length - 1];
+  const httpAlsoFailed =
+    !wsConnected &&
+    fallbackActive &&
+    lastMessage?.role === 'assistant' &&
+    lastMessage?.content?.includes('No se pudo conectar');
+  const showBanner = httpAlsoFailed;
 
   const handleSuggestionClick = (text: string) => {
     sendMessage(text);
@@ -371,12 +383,16 @@ export default function ChatPanel() {
           '&:last-child': { pb: 2 },
         }}
       >
-        {!wsConnected && <ConnectionBanner onRetry={retryWebSocket} />}
+        {showBanner && <ConnectionBanner onRetry={retryWebSocket} />}
         <MessageList
           messages={messages}
           loading={loading}
           toolSteps={toolSteps}
           onSuggestionClick={handleSuggestionClick}
+        />
+        <SuggestionChips
+          visible={messages.length === 0 && !loading}
+          onChipClick={handleSuggestionClick}
         />
         <MessageInput onSend={sendMessage} disabled={loading} />
       </CardContent>

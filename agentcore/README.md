@@ -99,3 +99,64 @@ agentcore status
 - Requiere acceso al modelo habilitado en Bedrock Console → Model access
 - Los módulos en agentcore/ son copias (no symlinks) porque el deploy no resuelve symlinks
 - Después de cambios en `backend/`, copiar los archivos modificados a `agentcore/`
+
+
+## IAM Execution Role
+
+El archivo `iam-policy.json` documenta todos los permisos que necesita el execution role
+del Unified Agent desplegado en AgentCore.
+
+### Permisos incluidos
+
+| Sid | Servicio | Propósito |
+|-----|----------|-----------|
+| BedrockModelInvocation | Bedrock | InvokeModel + streaming para Claude |
+| DynamoDBMinutasAccess | DynamoDB | Lectura de tabla de minutas (GetItem, Query, Scan) |
+| SecretsManagerDBCredentials | Secrets Manager | Obtener credenciales de Aurora PostgreSQL |
+| AgentCoreMemoryReadWrite | AgentCore Memory | STM y Semantic Memory (create events, list, retrieve) |
+| VPCNetworkInterfaceManagement | EC2 | Crear/eliminar ENIs para VPC mode |
+| CloudWatchLogsAndMetrics | CloudWatch Logs | Logging del runtime |
+
+### Cómo se aplica el rol
+
+`agentcore deploy` con flag `-auc` (auto-update-configuration) crea y actualiza el
+execution role automáticamente con permisos básicos (Bedrock, CloudWatch). Sin embargo,
+permisos adicionales como VPC ENI, DynamoDB, Secrets Manager y AgentCore Memory
+**deben agregarse manualmente** al rol creado por `agentcore deploy`.
+
+#### Opción A: Agregar permisos al rol auto-creado (recomendado para dev)
+
+1. Hacer `agentcore deploy -auc` (crea el rol con permisos base)
+2. Ir a IAM Console → buscar el rol `AgentCoreExecutionRole-<agent-name>-*`
+3. Adjuntar una inline policy con el contenido de `iam-policy.json`
+4. Reemplazar `${MINUTAS_TABLE_NAME}` y `${DB_SECRET_ARN}` con los valores reales
+
+#### Opción B: Pre-crear el rol (recomendado para prod)
+
+1. Crear un rol IAM con trust policy para `bedrock-agentcore.amazonaws.com`
+2. Adjuntar la policy de `iam-policy.json` con ARNs reales
+3. Pasar el ARN del rol al deploy: `agentcore deploy -auc -r us-east-1 --role-arn <ARN>`
+
+### Variables a reemplazar en producción
+
+| Placeholder | Valor real | Fuente |
+|-------------|------------|--------|
+| `${MINUTAS_TABLE_NAME}` | Nombre de la tabla DynamoDB de minutas | CDK Output / `.env` |
+| `${DB_SECRET_ARN}` | ARN del secret con credenciales Aurora | ProduccionPocStack Output / `.env` |
+
+### Trust Policy del rol
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "bedrock-agentcore.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```

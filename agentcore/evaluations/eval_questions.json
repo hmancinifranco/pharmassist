@@ -1,0 +1,462 @@
+[
+  {
+    "id": 1,
+    "category": "cartera",
+    "prompt": "¿Cuántos médicos tengo en mi cartera?",
+    "expected_data_type": "count",
+    "validation_criteria": {
+      "must_contain": [
+        "médico"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "numeric",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 2,
+    "category": "cartera",
+    "prompt": "¿Cuáles son los médicos de mi cartera con especialidad Cardiología?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "Cardiología"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 3,
+    "category": "cartera",
+    "prompt": "¿Qué médicos tengo en la zona de Belgrano?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "Belgrano"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 4,
+    "category": "cartera",
+    "prompt": "¿Cuál es la distribución de especialidades en mi cartera?",
+    "expected_data_type": "distribution",
+    "validation_criteria": {
+      "must_contain": [
+        "especialidad"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 5,
+    "category": "cartera",
+    "prompt": "¿Qué médicos tienen cadencia mensual?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "mensual"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 6,
+    "category": "cartera",
+    "prompt": "¿Hay médicos inactivos en mi cartera?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "inactivo"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 7,
+    "category": "prescripciones",
+    "prompt": "¿Cuáles son los top 10 prescriptores de nuestros productos?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "prescri"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 8,
+    "category": "prescripciones",
+    "prompt": "¿Qué médicos están creciendo en EVO TRM positivo?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "EVO",
+        "TRM"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 9,
+    "category": "prescripciones",
+    "prompt": "¿Cuál es el share promedio de nuestros productos?",
+    "expected_data_type": "metric",
+    "validation_criteria": {
+      "must_contain": [
+        "share"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "numeric",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 10,
+    "category": "prescripciones",
+    "prompt": "¿Qué marcas propias tienen mayor share en mi cartera?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "share"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 11,
+    "category": "prescripciones",
+    "prompt": "¿Qué médicos prescriben productos de la competencia?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "competencia"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 12,
+    "category": "prescripciones",
+    "prompt": "¿Cuáles son las marcas con mejor EVO TRM este trimestre?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "EVO",
+        "TRM"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 13,
+    "category": "visitas",
+    "prompt": "¿Cuántas visitas hice este mes?",
+    "expected_data_type": "count",
+    "validation_criteria": {
+      "must_contain": [
+        "visita"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "numeric",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 14,
+    "category": "visitas",
+    "prompt": "¿Cuándo fue mi última visita al Dr. García?",
+    "expected_data_type": "date",
+    "validation_criteria": {
+      "must_contain": [
+        "García"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "text",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 15,
+    "category": "visitas",
+    "prompt": "¿Qué médicos no visité en los últimos 3 meses?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "médico"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 16,
+    "category": "visitas",
+    "prompt": "¿Cuál es mi distribución de visitas por tipo (presencial/virtual/telefónica)?",
+    "expected_data_type": "distribution",
+    "validation_criteria": {
+      "must_contain": [
+        "presencial",
+        "virtual"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 17,
+    "category": "visitas",
+    "prompt": "¿Qué productos presenté en mi última visita al Dr. Pérez?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "Pérez",
+        "producto"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "list",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 18,
+    "category": "visitas",
+    "prompt": "¿Cuántas visitas exitosas tuve vs no exitosas?",
+    "expected_data_type": "comparison",
+    "validation_criteria": {
+      "must_contain": [
+        "exitosa"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 19,
+    "category": "ventas",
+    "prompt": "¿Cuáles son los productos foco del ciclo actual?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "producto",
+        "foco"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "list",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 20,
+    "category": "ventas",
+    "prompt": "¿Cuáles son los productos hiperfoco?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "hiperfoco"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "list",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 21,
+    "category": "ventas",
+    "prompt": "¿Qué productos presento más frecuentemente en visitas?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "producto"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 22,
+    "category": "ventas",
+    "prompt": "¿Cuáles son los principios activos de mis productos foco?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "principio activo"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 23,
+    "category": "ventas",
+    "prompt": "¿Hay productos foco que no estoy presentando en visitas?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "producto",
+        "foco"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 24,
+    "category": "briefs",
+    "prompt": "Generame un brief para visitar al Dr. García",
+    "expected_data_type": "brief",
+    "validation_criteria": {
+      "must_contain": [
+        "García"
+      ],
+      "must_use_tool": "generar_brief",
+      "result_type": "text",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 25,
+    "category": "briefs",
+    "prompt": "¿Qué información pública hay del Dr. López?",
+    "expected_data_type": "research",
+    "validation_criteria": {
+      "must_contain": [
+        "López"
+      ],
+      "must_use_tool": "buscar_info_publica",
+      "result_type": "text",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 26,
+    "category": "briefs",
+    "prompt": "Generame un mensaje de cumpleaños para el Dr. Martínez",
+    "expected_data_type": "message",
+    "validation_criteria": {
+      "must_contain": [
+        "Martínez",
+        "cumpleaños"
+      ],
+      "must_use_tool": "generar_mensaje_cumpleanos",
+      "result_type": "text",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 27,
+    "category": "cross-domain",
+    "prompt": "¿Qué médicos prescriben productos foco pero no los estoy visitando?",
+    "expected_data_type": "list",
+    "validation_criteria": {
+      "must_contain": [
+        "médico",
+        "producto"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 28,
+    "category": "cross-domain",
+    "prompt": "¿Cuál es mi médico más valioso (alto share + alta prescripción)?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "médico",
+        "share"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 29,
+    "category": "cross-domain",
+    "prompt": "¿Qué zona tiene mejor cobertura de visitas vs cadencia?",
+    "expected_data_type": "comparison",
+    "validation_criteria": {
+      "must_contain": [
+        "zona",
+        "cobertura"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 30,
+    "category": "cross-domain",
+    "prompt": "¿Cuáles son mis médicos con mayor potencial de crecimiento?",
+    "expected_data_type": "ranking",
+    "validation_criteria": {
+      "must_contain": [
+        "médico",
+        "potencial"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "table",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 31,
+    "category": "cross-domain",
+    "prompt": "¿Qué médicos debería priorizar para la próxima semana?",
+    "expected_data_type": "recommendation",
+    "validation_criteria": {
+      "must_contain": [
+        "médico",
+        "priorizar"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "list",
+      "must_not_contain": []
+    }
+  },
+  {
+    "id": 32,
+    "category": "cross-domain",
+    "prompt": "Dame un resumen ejecutivo de mi performance este ciclo",
+    "expected_data_type": "summary",
+    "validation_criteria": {
+      "must_contain": [
+        "resumen"
+      ],
+      "must_use_tool": "query_db",
+      "result_type": "text",
+      "must_not_contain": []
+    }
+  }
+]

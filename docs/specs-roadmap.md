@@ -32,6 +32,7 @@
 | 13 | `model-routing` | 5 | 🔴 | #8, #9 | Escalonamiento de modelos por carril + prompt caching |
 | 14 | `observability-lake` | 5 | 🔴 | #11 | Métricas por carril, alertas CloudWatch, dashboards operativos |
 | 15 | `load-testing` | 5 | 🔴 | #14 | Perfil de carga 50-200 APMs, validación de SLOs |
+| 16 | `codeagent-webapp-integration` | — | 🟢 | POC | Unified agent con query_db → Aurora, frontend structured responses, AgentCore Memory/Identity/Observability |
 
 ## Fases
 
@@ -163,3 +164,87 @@
 - Los scripts SQL en `infrastructure/scripts/validation/` son para ejecución manual en Athena — no están automatizados
 - Para spec #5 (athena-cross-source): las 6 named queries ya están desplegadas, las queries prototipo en `preguntas_prototipo.sql` son el punto de partida
 - La documentación del mapping está en `docs/etl-column-mapping-maestros.md` — referencia para cualquier cambio futuro en el ETL
+
+
+### `produccion-poc-codeagent` — cerrado (POC Producción)
+
+**Decisiones tomadas:**
+- CodeAgent con `strands-code-agent` + fallback a Agent regular con `@tool query_db` — strands-code-agent Toolkit API no matchea la interfaz documentada (no acepta `authorized_imports` ni `init_code`), así que el POC usa el fallback con Agent regular. Funciona perfectamente.
+- Aurora PostgreSQL 15.8 (no 15.4) — la versión 15.4 ya no está disponible en us-east-1
+- AgentCore VPC mode con container deployment — necesario para que el agente alcance Aurora en VPC privada. Requiere Dockerfile y subnet en AZ compatible (use1-az4, use1-az1, use1-az2, NO use1-az6)
+- Modelo `us.anthropic.claude-sonnet-4-6` — el modelo original `us.anthropic.claude-sonnet-4-20250514-v1:0` fue marcado como Legacy
+- LocalBundling en CDK para la Lambda de seed — pip install deps + copy source en synth time (no Docker)
+- `ON CONFLICT DO NOTHING` en seed handler — permite re-ejecución idempotente sin errores
+- pg8000 (pure Python) como driver PostgreSQL — compatible con Lambda sin compilación de C extensions
+
+**Desvíos del plan original:**
+- strands-code-agent → Agent regular con @tool — la API Toolkit no existe como se documentó en el design
+- Aurora 15.4 → 15.8 — forzado por disponibilidad regional
+- Docker Hub rate limit bloqueó un re-deploy transitoriamente — se resolvió esperando
+- Se necesitó agregar IAM policy manualmente al execution role de AgentCore (PharmAssistAuroraAccess) para acceso a Secrets Manager
+- RDS CA bundle (`rds-ca-bundle.pem`) necesario para SSL connection — empaquetado con el agente
+
+**Gotchas para specs siguientes:**
+- AgentCore VPC mode REQUIERE container deployment (Dockerfile), no direct_code_deploy
+- Solo soporta subnets en AZs: use1-az4, use1-az1, use1-az2 (NO use1-az6/us-east-1b)
+- `ecr_auto_create: true` es necesario en `.bedrock_agentcore.yaml`
+- `agentcore` CLI no soporta `--profile` — debe exportarse AWS_PROFILE antes
+- `-env` flags en `agentcore deploy` NO persisten entre deploys — siempre incluirlos
+- La Lambda de seed con bundling local necesita `pip` disponible con platform `manylinux2014_x86_64`
+- El smoke test via CLI agrega 5-15s overhead vs invocación directa por API — latencias reales son ~3-8s
+- Costo mensual del stack: ~$75-80 (VPC NAT + Aurora min 0.5 ACU)
+- Para destruir: `cdk destroy ProduccionPocStack --profile $AWS_PROFILE` + `agentcore destroy` (desde `produccion-poc/agent/`)
+
+**Recursos AWS desplegados:**
+- Aurora PostgreSQL cluster: `produccionpocstack-auroracluster23d869c0-7hduhahoevwu`
+- DB name: `pharmassist_poc` (2M+ filas en 21 tablas)
+- AgentCore Runtime: `pharmassist_poc_codeagent-un2E5n2NIK`
+- Lambda seed: `ProduccionPocStack-SeedDataFunction0523C2C2-uH6XeYapJa5G`
+- VPC: `vpc-09a9d2d63c4486091`
+
+**Variables de entorno nuevas:**
+- `POC_AURORA_ENDPOINT`, `POC_AURORA_SECRET_ARN`, `POC_VPC_ID`, `POC_SEED_LAMBDA_ARN`
+- `POC_CODEAGENT_ARN`, `POC_CODEAGENT_NAME`
+
+
+### #16 `codeagent-webapp-integration` — cerrado
+
+**Decisiones tomadas:**
+- Single AgentCore runtime (Option C del design) — un único agente unificado en vez de múltiples runtimes por dominio
+- `query_db` como tool primario reemplazando 7 tools DynamoDB individuales — el CodeAgent genera SQL contra Aurora directamente, simplificando la arquitectura
+- Claude Sonnet 4 (`us.anthropic.claude-sonnet-4-6`) como modelo — buen balance entre calidad y latencia
+- VPC mode para acceso directo a Aurora — requiere ENI en subnet privada con egress al RDS
+- Dual-path imports (try/except) para compatibilidad AgentCore vs local — AgentCore importa desde /var/task root, desarrollo local importa con prefijo de paquete
+- AgentCore Memory con semantic memory strategy — permite cross-session context retrieval por APM
+- ResponseFormatter con `<!--STRUCTURED:...-->` protocol — metadata JSON embebida en respuesta de texto, parseada por frontend
+
+**Desvíos del plan:**
+- No se necesitó CDK deploy — el stack CDK existente (ProduccionPocStack) ya tenía los IAM perms necesarios para el Lambda proxy
+- `agentcore configure` maneja VPC config (no `agentcore deploy --network-mode`) — el CLI tiene un flag diferente al documentado
+- Imports necesitaron try/except dual-path para local vs AgentCore runtime — AgentCore despliega en /var/task sin estructura de paquete
+- `agentcore deploy -auc` auto-crea el execution role pero necesita permisos adicionales para Secrets Manager + DynamoDB manualmente
+- El frontend no requirió MUI X Charts completo para MVP — se implementaron los tipos y el componente pero la detección de charts se mantiene simple
+
+**Gotchas para specs siguientes:**
+- AgentCore runtime importa desde /var/task root (no `agentcore` package) — SIEMPRE usar try/except dual-path en imports
+- RDS CA bundle (`rds-ca-bundle.pem`) debe empaquetarse junto al código — no está auto-disponible en el container AgentCore
+- `agentcore deploy -auc` auto-crea role pero hay que agregar permisos de Secrets Manager + DynamoDB manualmente al role creado
+- Memory resource ID es `pharmassist_memory-V5OWtfDnjg` — referenciar con env var AGENTCORE_MEMORY_ID
+- Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:709578350924:runtime/agent-YHftSl284V`
+- VPC Security Group: `sg-06a114932a8ffd8be` — permite egress al Aurora SG
+- Subnet: `subnet-09cde5f1fbdc98fe7` — private subnet en AZ compatible
+- El evaluation suite (`agentcore/evaluations/`) tiene 30+ preguntas pero requiere agent desplegado para correr
+- Voice mode (BidiAgent) solo necesita cambiar TEXT_AGENT_ARN en env var para apuntar al nuevo agente
+
+**ARNs/recursos desplegados:**
+- Unified Agent: `arn:aws:bedrock-agentcore:us-east-1:709578350924:runtime/agent-YHftSl284V`
+- Memory: `pharmassist_memory-V5OWtfDnjg`
+- VPC SG: `sg-06a114932a8ffd8be`
+- Subnet: `subnet-09cde5f1fbdc98fe7`
+
+**Variables de entorno nuevas:**
+- `AGENTCORE_MEMORY_ID` — ID del recurso Memory en AgentCore
+- `DB_SECRET_ARN` — ARN del secret en Secrets Manager con credenciales Aurora
+- `AGENTCORE_VPC_SUBNET` — Subnet ID para VPC mode
+- `AGENTCORE_VPC_SG` — Security Group ID para VPC mode
+- `MINUTAS_TABLE_NAME` — Nombre de la tabla DynamoDB de minutas

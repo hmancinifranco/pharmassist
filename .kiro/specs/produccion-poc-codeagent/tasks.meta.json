@@ -1,0 +1,411 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Crear skeleton del stack `ProduccionPocStack` con VPC, Aurora, Secrets Manager, Security Groups": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367631
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911379872
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911483458
+      }
+    ],
+    "1.2 Crear CDK entry point `produccion-poc/infrastructure/app.py`": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367708
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911490610
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911562669
+      }
+    ],
+    "1.3 Agregar Lambda de seed data al stack": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367768
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911568970
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911783485
+      }
+    ],
+    "2. Checkpoint — cdk synth": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367811
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782914155937
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782915330808
+      }
+    ],
+    "3.1 Crear DDL completo (tablas + índices)": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367865
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911570027
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911784927
+      }
+    ],
+    "3.2 Crear generadores de tablas padre (catálogos)": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367906
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911807925
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782912368260
+      }
+    ],
+    "3.3 Crear generadores de tablas dependientes (APMs, Doctors, Cartera)": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367946
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911809099
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782912369692
+      }
+    ],
+    "3.4 Crear generador de agenda y agenda_producto": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911367979
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782912376000
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782913418836
+      }
+    ],
+    "3.5 Crear generador de UltimaMillaMarca (1.5M filas)": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368016
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782912377346
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782913420262
+      }
+    ],
+    "3.6 Crear Lambda handler para seed data": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368063
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782913426652
+      }
+    ],
+    "4. Checkpoint — Seed Data": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368099
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782914157021
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782915331701
+      }
+    ],
+    "5.1 Crear PharmaToolkit con query_db, get_apm_id, get_ciclo_actual_id": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368131
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782915345968
+      }
+    ],
+    "5.3 Crear SystemPromptBuilder": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368173
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782915346902
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782916538607
+      }
+    ],
+    "5.5 Crear entry point del agente con CodeAgent": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368234
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782916545937
+      }
+    ],
+    "5.6 Crear archivos de prompts estáticos": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368269
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782915348339
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782916537469
+      }
+    ],
+    "6. Checkpoint — Agent Local": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368307
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782916826711
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782917284456
+      }
+    ],
+    "7.1 CDK deploy del stack completo": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368340
+      },
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782917292351
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782919944034
+      }
+    ],
+    "7.2 Invocar Lambda de seed data": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368389
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782919950934
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782924237104
+      }
+    ],
+    "7.3 Validación post-seed": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368421
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782924244311
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782924514002
+      }
+    ],
+    "7.4 Deploy del CodeAgent": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368465
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782924520671
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782927073929
+      }
+    ],
+    "8.1 Crear script de smoke test": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368499
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782927081224
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782928934649
+      }
+    ],
+    "8.2 Ejecutar smoke test y validar resultados": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368539
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782928943554
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782931767512
+      }
+    ],
+    "9. Final checkpoint": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911368583
+      },
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782931774735
+      }
+    ],
+    "1. CDK Stack — Skeleton + Entry Point": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782911783553
+      }
+    ],
+    "3. Seed Data Generator — DDL y Generadores": [
+      {
+        "executionId": "6c741a65-4c7e-4a5d-80da-6768685982a7",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782914149688
+      }
+    ],
+    "7. Deploy a AWS": [
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782927074018
+      }
+    ],
+    "8. End-to-End Validation": [
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782931767599
+      }
+    ],
+    "5. CodeAgent — Toolkit y System Prompt": [
+      {
+        "executionId": "af46781c-007e-4467-975e-bc6f43a10173",
+        "chatSessionId": "sess_1890a72c-fb2d-4221-b038-715af235aa0d",
+        "timestamp": 1782932133277
+      }
+    ]
+  }
+}

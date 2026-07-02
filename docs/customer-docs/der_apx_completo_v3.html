@@ -1,0 +1,407 @@
+
+<!-- saved from url=(0061)file:///C:/Users/tmcnally/Downloads/der_apx_dbo_completo.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style>
+*{box-sizing:border-box;margin:0;padding:0}
+#cw{width:100vw;margin-left:calc(-50vw + 50%);height:92vh;overflow:hidden;position:relative;background:#0d0d0d;cursor:grab;user-select:none}
+#cw.pan{cursor:grabbing}
+#wo{position:absolute;transform-origin:0 0}
+.tbl{position:absolute;border-radius:8px;min-width:200px;border:1px solid #2a2a2a;cursor:grab;background:#1a1a1a;box-shadow:0 2px 12px rgba(0,0,0,0.6)}
+.tbl:active{cursor:grabbing}
+.th{padding:6px 10px;border-radius:7px 7px 0 0;font-size:12px;font-weight:500;white-space:nowrap}
+.tb{padding:2px 0 5px}
+.tr{display:flex;align-items:center;gap:5px;padding:2px 10px;font-size:11px;color:#888;white-space:nowrap}
+.tr.pk{color:#e0e0e0;font-weight:500}
+.bpk{font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:#3a2a00;color:#f0a500;flex-shrink:0}
+.bfk{font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:#0d2240;color:#5599ee;flex-shrink:0}
+svg#ln{position:absolute;top:0;left:0;pointer-events:none;overflow:visible}
+#tb{position:absolute;bottom:16px;right:16px;display:flex;flex-direction:column;gap:4px;z-index:100}
+.zb{width:32px;height:32px;background:#1e1e1e;border:1px solid #333;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;color:#ccc;line-height:1}
+.zb:hover{background:#2a2a2a}
+#zl{font-size:10px;color:#555;text-align:center}
+#hint{position:absolute;top:12px;left:16px;font-size:11px;color:#444;pointer-events:none;z-index:10}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#666;padding:6px 8px;background:#0d0d0d}
+.ldot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+</style>
+</head><body><div class="legend">
+  <span style="display:flex;align-items:center;gap:5px"><span class="ldot" style="background:#6c5ce7"></span>Core</span>
+  <span style="display:flex;align-items:center;gap:5px"><span class="ldot" style="background:#00b894"></span>Catálogos</span>
+  <span style="display:flex;align-items:center;gap:5px"><span class="ldot" style="background:#e17055"></span>Relaciones</span>
+  <span style="display:flex;align-items:center;gap:5px"><span class="ldot" style="background:#0984e3"></span>Analítica</span>
+  <span style="display:flex;align-items:center;gap:5px"><span class="ldot" style="background:#00cec9"></span>Geografía</span>
+</div>
+<div id="cw" class="">
+  <div id="hint">Arrastrá tablas · Scroll para zoom · Arrastrá el fondo para mover</div>
+  <div id="wo" style="transform: translate(-979.442px, -1498.01px) scale(1.31682);"><svg id="ln" width="6000" height="5000"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></marker></defs><path d="M172.2586942940442,2435.8094500555326 C1643.519296046741,2435.8094500555326 1970.466096436229,990.8489970529436 3441.7266981889256,990.8489970529436" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M72.25869429404422,2193.3094500555326 C-3.711194554352261,2193.3094500555326 -20.593392076218166,1514.1773262876575 -96.56328092461465,1514.1773262876575" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M172.2586942940442,2435.8094500555326 C637.5822306143075,2435.8094500555326 740.9874609076994,1539.3324232232455 1206.3109972279626,1539.3324232232455" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M72.25869429404422,2193.3094500555326 C836.1679805770268,2193.3094500555326 1005.925599751023,-178.36893114547934 1769.8348860340056,-178.36893114547934" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M172.2586942940442,2435.8094500555326 C361.44451509886085,2435.8094500555326 403.4858086110423,2633.938846744587 592.6716294158589,2633.938846744587" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M172.2586942940442,2435.8094500555326 C469.2474408306141,2435.8094500555326 535.2449400609629,2436.819251130549 832.2336865975328,2436.819251130549" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M72.25869429404422,2193.3094500555326 C-209.9326127134524,2193.3094500555326 -272.6417920484517,1226.8470081910325 -554.8330990559483,1226.8470081910325" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-51.07162380258194,788.7698181313342 C1520.6876210935966,788.7698181313342 1869.9674532927472,990.8489970529436 3441.7266981889256,990.8489970529436" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-151.07162380258194,1199.2698181313342 C-126.54286950749666,1199.2698181313342 -121.09203521969992,1317.1773262876575 -96.56328092461465,1317.1773262876575" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-251.07162380258194,788.7698181313342 C-342.76428766659683,788.7698181313342 -363.1404351919334,1120.3470081910325 -454.8330990559483,1120.3470081910325" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-51.07162380258194,788.7698181313342 C12.02890275626919,788.7698181313342 26.051241991569455,656.2921302692581 89.15176855042058,656.2921302692581" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-51.07162380258194,788.7698181313342 C9.479780620059742,788.7698181313342 22.935648269535662,527.6517931388425 83.48705269217734,527.6517931388425" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-51.07162380258194,788.7698181313342 C37.433511024366254,788.7698181313342 57.101318763688056,957.7281789766703 145.60645359063625,957.7281789766703" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-251.07162380258194,788.7698181313342 C-343.63048924927074,788.7698181313342 -364.19912601520156,839.7802521518817 -456.75799146189036,839.7802521518817" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-251.07162380258194,788.7698181313342 C-344.1008303831734,788.7698181313342 -364.77398740108254,498.46940510898224 -457.803193981674,498.46940510898224" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-42.81351807632268,0.43722690157544264 C-91.52966565313935,0.43722690157544264 -102.35547622576527,378.26981813133426 -151.07162380258194,378.26981813133426" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-42.81351807632268,0.43722690157544264 C46.69544681503638,0.43722690157544264 66.58632790200505,1347.3634276903379 156.0952927933641,1347.3634276903379" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M57.18648192367732,-42.06277309842456 C324.97071782396216,-42.06277309842456 384.47832580180324,-317.39147446481735 652.2625617020881,-317.39147446481735" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M57.18648192367732,-42.06277309842456 C208.82783161557307,-42.06277309842456 242.52590932488323,-29.43279970314461 394.167259016779,-29.43279970314461" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M-142.81351807632268,-42.06277309842456 C-281.5681436024222,-42.06277309842456 -312.4025048304443,180.25971226964572 -451.1571303565438,180.25971226964572" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M318.7496143753914,266.6312331174712 C107.3300571953034,266.6312331174712 60.34793337750605,378.26981813133426 -151.07162380258194,378.26981813133426" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M218.74961437539142,216.1312331174712 C146.04620477212006,216.1312331174712 129.88989152694865,-42.06277309842456 57.18648192367732,-42.06277309842456" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M357.79867776655425,370.2398778121009 C173.80704206044297,370.2398778121009 132.92001190352934,788.7698181313342 -51.07162380258194,788.7698181313342" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M342.11381494634395,652.809434792112 C318.28089406817844,652.809434792112 312.9846894285861,656.2921302692581 289.15176855042057,656.2921302692581" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M190.48316505067214,464.4697042078523 C36.783510066707805,464.4697042078523 2.628031181382397,378.26981813133426 -151.07162380258194,378.26981813133426" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M327.063753036617,520.7567885799708 C307.4542378816192,520.7567885799708 303.0965678471752,527.6517931388425 283.4870526921774,527.6517931388425" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M3641.7266981889256,990.8489970529436 C3744.4192108906364,990.8489970529436 3767.239769268794,992.3155033846982 3869.932281970505,992.3155033846982" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M3441.7266981889256,990.8489970529436 C2947.1630550697655,990.8489970529436 2837.2600232655077,-3.488420244202331 2342.6963801463476,-3.488420244202331" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2515.400820973696,526.2428219798825 C2932.2474657205494,526.2428219798825 3024.8800534420725,990.8489970529436 3441.7266981889256,990.8489970529436" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2315.400820973696,526.2428219798825 C1906.3104002881162,526.2428219798825 1815.4014179135427,1539.3324232232455 1406.3109972279626,1539.3324232232455" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2402.916910916476,339.9112269853705 C2408.534670442225,339.9112269853705 2409.783061447947,395.7428219798825 2415.400820973696,395.7428219798825" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1606.949373910808,1170.1545927895302 C2432.5991698359608,1170.1545927895302 2616.076902263773,990.8489970529436 3441.7266981889256,990.8489970529436" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1406.949373910808,1170.1545927895302 C889.0650374079581,1170.1545927895302 773.979629296214,1453.8634276903379 256.09529279336414,1453.8634276903379" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1491.4373034002713,1297.713392743983 C1498.4177351300127,1297.713392743983 1499.9689421810665,1260.6545927895302 1506.949373910808,1260.6545927895302" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M56.095292793364116,1453.8634276903379 C32.39893462027368,1453.8634276903379 27.133077248475796,1415.6773262876575 3.436719075385355,1415.6773262876575" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M256.09529279336414,1453.8634276903379 C683.6923597889335,1453.8634276903379 778.7139302323933,1539.3324232232455 1206.3109972279626,1539.3324232232455" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M156.0952927933641,1560.3634276903379 C155.8029803617674,1560.3634276903379 155.73802204363477,1614.9319619050857 155.44570961203806,1614.9319619050857" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M158.7986250555824,1723.9050817706554 C157.28981310598743,1723.9050817706554 156.95452156163302,1683.9319619050857 155.44570961203806,1683.9319619050857" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1481.3387542134674,-275.96947019940956 C1566.1620135327096,-275.96947019940956 1585.0116267147635,-220.86893114547934 1669.8348860340056,-220.86893114547934" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1281.3387542134674,-275.96947019940956 C1088.2544675833467,-275.96947019940956 1045.3468483322088,-317.39147446481735 852.2625617020881,-317.39147446481735" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1281.3387542134674,-275.96947019940956 C1219.3413950164615,-275.96947019940956 1205.5642040837934,-27.46652347246534 1143.5668448867875,-27.46652347246534" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1481.3387542134674,-275.96947019940956 C1717.7680445809476,-275.96947019940956 1770.3078868848322,-413.944976692656 2006.7371772523124,-413.944976692656" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1143.5668448867875,-27.46652347246534 C1593.1751357535895,-27.46652347246534 1693.0880892795456,-3.488420244202331 2142.6963801463476,-3.488420244202331" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M943.5668448867875,-27.46652347246534 C905.6469413110837,-27.46652347246534 897.2202960720384,-27.366032079414964 859.3003924963346,-27.366032079414964" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M3061.77675165058,-540.2042787072158 C3131.8037671352063,-540.2042787072158 3147.3653261317895,-546.5340116863472 3217.3923416164157,-546.5340116863472" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2861.77675165058,-540.2042787072158 C2766.28227226197,-540.2042787072158 2745.0612768422784,-417.2759628705698 2649.566797453668,-417.2759628705698" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1038.1001823408178,-177.29955805530687 C1040.5601804865041,-177.29955805530687 1041.1068467411012,-109.96652347246534 1043.5668448867875,-109.96652347246534" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2869.0403631782815,-237.80239714595677 C2770.2772586022056,-237.80239714595677 2748.329902029744,-417.2759628705698 2649.566797453668,-417.2759628705698" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2206.7371772523124,-413.944976692656 C2316.0105063429223,-413.944976692656 2340.2934683630583,-417.2759628705698 2449.566797453668,-417.2759628705698" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2872.9228519304083,-350.13769283701066 C2772.4126274158752,-350.13769283701066 2750.0770219682013,-417.2759628705698 2649.566797453668,-417.2759628705698" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M594.167259016779,-29.43279970314461 C623.4771690825789,-29.43279970314461 629.9904824305346,-27.366032079414964 659.3003924963346,-27.366032079414964" fill="none" stroke="#00b894" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M792.6716294158589,2633.938846744587 C836.7510910368073,2633.938846744587 846.5465269525737,2628.8487038167104 890.6259885735221,2628.8487038167104" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1090.6259885735221,2628.8487038167104 C1162.8407831693016,2628.8487038167104 1178.8885153016972,2648.23836131765 1251.1033098974767,2648.23836131765" fill="none" stroke="#6c5ce7" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M3747.8508596989545,2285.46095968014 C3629.689104809544,2285.46095968014 3603.4309370563415,2257.947315773605 3485.269182166931,2257.947315773605" fill="none" stroke="#0984e3" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1529.6403326253958,394.4939642343853 C1883.232552382131,394.4939642343853 1961.808601216961,526.2428219798825 2315.400820973696,526.2428219798825" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1429.6403326253958,500.9939642343853 C1464.4294012038313,500.9939642343853 1472.1603053323724,1079.6545927895302 1506.949373910808,1079.6545927895302" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1329.6403326253958,394.4939642343853 C846.5450647009815,394.4939642343853 739.1905607177785,1453.8634276903379 256.09529279336414,1453.8634276903379" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1329.6403326253958,394.4939642343853 C886.825087059754,394.4939642343853 788.421699156278,957.7281789766703 345.60645359063625,957.7281789766703" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1603.8649361168482,273.83862646474745 C1570.4638645456946,273.83862646474745 1563.0414041965494,394.4939642343853 1529.6403326253958,394.4939642343853" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1865.5231454342627,165.46355318980602 C1792.776951241426,165.46355318980602 1776.6111303096848,183.33862646474745 1703.8649361168482,183.33862646474745" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1965.5231454342627,98.96355318980602 C2065.4134419378597,98.96355318980602 2087.611285605326,126.39411688702175 2187.5015821089232,126.39411688702175" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2287.5015821089232,176.89411688702177 C2237.5564338571235,176.89411688702177 2226.4575120233903,198.68422586974927 2176.5123637715906,198.68422586974927" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2187.5015821089232,126.39411688702175 C2014.8650914124894,126.39411688702175 1976.501426813282,273.83862646474745 1803.8649361168482,273.83862646474745" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2076.5123637715906,249.18422586974927 C2061.0748271341204,249.18422586974927 2057.644263436905,363.3478260184994 2042.2067267994348,363.3478260184994" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M2076.5123637715906,249.18422586974927 C1953.8210213269565,249.18422586974927 1926.5562785614823,273.83862646474745 1803.8649361168482,273.83862646474745" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path><path d="M1842.2067267994348,363.3478260184994 C1824.9529209922707,363.3478260184994 1821.1187419240123,273.83862646474745 1803.8649361168482,273.83862646474745" fill="none" stroke="#00cec9" stroke-width="1.366927306872781" opacity="0.8" marker-end="url(#arr)"></path></svg><div class="tbl" id="t_apm" style="left: -27.7413px; top: 2193.31px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">apm</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>primerNombre</span></div><div class="tr"><span>segundoNombre</span></div><div class="tr"><span>primerApellido</span></div><div class="tr"><span>segundoApellido</span></div><div class="tr"><span>email</span></div><div class="tr"><span>ad_oid</span></div><div class="tr"><span>profile_image</span></div><div class="tr"><span>fecha_nacimiento</span></div><div class="tr"><span>telefono</span></div><div class="tr"><span class="bfk">FK</span><span>gerente_regional_id</span></div><div class="tr"><span>dias_registro_visita</span></div><div class="tr"><span>legajo</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span class="bfk">FK</span><span>id_direccion_entrega</span></div><div class="tr"><span class="bfk">FK</span><span>id_direccion_particular</span></div><div class="tr"><span class="bfk">FK</span><span>id_linea</span></div><div class="tr"><span>alias_geodata</span></div><div class="tr"><span>deleted</span></div><div class="tr"><span>deletedBy</span></div><div class="tr"><span>deletedDate</span></div><div class="tr"><span>configEntidad</span></div><div class="tr"><span>codigoPromotor</span></div><div class="tr"><span>rolWeb</span></div><div class="tr"><span>tipoPromotor</span></div></div></div><div class="tbl" id="t_doctor" style="left: -251.072px; top: 378.27px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">doctor</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>primerNombre</span></div><div class="tr"><span>segundoNombre</span></div><div class="tr"><span>primerApellido</span></div><div class="tr"><span>segundoApellido</span></div><div class="tr"><span>fechaNacimiento</span></div><div class="tr"><span>email</span></div><div class="tr"><span>matriculaNacional</span></div><div class="tr"><span>matriculaProvincial</span></div><div class="tr"><span class="bfk">FK</span><span>especialidad_id</span></div><div class="tr"><span class="bfk">FK</span><span>especialidadSecundaria_id</span></div><div class="tr"><span class="bfk">FK</span><span>enteEmisor_id</span></div><div class="tr"><span>telefono</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span>px</span></div><div class="tr"><span>sexo</span></div><div class="tr"><span>estado_civil</span></div><div class="tr"><span class="bfk">FK</span><span>estado_doctor_id</span></div><div class="tr"><span>profile_image</span></div><div class="tr"><span>doctor_app</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>flagDocente</span></div><div class="tr"><span>lugarDocente</span></div><div class="tr"><span>flagCoordinador</span></div><div class="tr"><span>lugarCoordinador</span></div><div class="tr"><span>flagLiderOpi</span></div><div class="tr"><span>ObsLiderOpi</span></div><div class="tr"><span>flagSocieCienti</span></div><div class="tr"><span>nomSocieCienti</span></div><div class="tr"><span>cargSocieCienti</span></div><div class="tr"><span>flagInteCienti</span></div><div class="tr"><span>obsSocieCienti</span></div><div class="tr"><span class="bfk">FK</span><span>espeSubespecialidad_id</span></div><div class="tr"><span>flag_residente</span></div><div class="tr"><span>flag_jefe_servicio</span></div><div class="tr"><span class="bfk">FK</span><span>sociedad_cientifica_id</span></div><div class="tr"><span>Codigo_Medico</span></div><div class="tr"><span class="bfk">FK</span><span>loyalty_id</span></div><div class="tr"><span class="bfk">FK</span><span>categoria_id</span></div><div class="tr"><span>doctor_id</span></div><div class="tr"><span class="bfk">FK</span><span>EntidadMatriculaNacional_id</span></div><div class="tr"><span class="bfk">FK</span><span>EntidadMatriculaProvincial_id</span></div><div class="tr"><span>deleted</span></div><div class="tr"><span>deletedBy</span></div><div class="tr"><span>deletedDate</span></div><div class="tr"><span>dni</span></div><div class="tr"><span>residente_categoria</span></div></div></div><div class="tbl" id="t_agenda" style="left: 3441.73px; top: 716.349px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">agenda</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>inicio</span></div><div class="tr"><span>fin</span></div><div class="tr"><span class="bfk">FK</span><span>apm_id</span></div><div class="tr"><span class="bfk">FK</span><span>doctor_id</span></div><div class="tr"><span>descripcion</span></div><div class="tr"><span>lugar</span></div><div class="tr"><span>turno</span></div><div class="tr"><span class="bfk">FK</span><span>agenda_tipo_id</span></div><div class="tr"><span class="bfk">FK</span><span>institucion_id</span></div><div class="tr"><span>visita_exitosa</span></div><div class="tr"><span>observaciones</span></div><div class="tr"><span>acompanante</span></div><div class="tr"><span>direccion</span></div><div class="tr"><span>perfil</span></div><div class="tr"><span class="bfk">FK</span><span>agenda_motivo_fallida_id</span></div><div class="tr"><span>lastUpdated</span></div><div class="tr"><span>visita_tipo</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>porcentaje_turno_manana</span></div><div class="tr"><span>porcentaje_turno_tarde</span></div><div class="tr"><span>requires_approval</span></div><div class="tr"><span>approved</span></div><div class="tr"><span>approved_by</span></div><div class="tr"><span>plataforma</span></div><div class="tr"><span class="bfk">FK</span><span>direccion_id</span></div><div class="tr"><span>receiptName</span></div><div class="tr"><span class="bfk">FK</span><span>id_agenda_origen</span></div><div class="tr"><span class="bfk">FK</span><span>farmacia_id</span></div><div class="tr"><span>deleted</span></div><div class="tr"><span>deletedBy</span></div><div class="tr"><span>deletedDate</span></div></div></div><div class="tbl" id="t_agenda_muestra" style="left: 3869.93px; top: 925.816px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">agenda_muestra</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_agenda</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>cantidad</span></div><div class="tr"><span>lote</span></div><div class="tr"><span>productCode</span></div></div></div><div class="tbl" id="t_agenda_producto" style="left: 2142.7px; top: -45.9884px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">agenda_producto</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_agenda</span></div><div class="tr"><span class="bfk">FK</span><span>id_producto</span></div></div></div><div class="tbl" id="t_cartera_medica" style="left: -196.563px; top: 1317.18px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">cartera_medica</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>apm_id</span></div><div class="tr"><span class="bfk">FK</span><span>doctor_id</span></div><div class="tr"><span class="bfk">FK</span><span>datos_visita_id</span></div><div class="tr"><span>approved</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span class="bfk">FK</span><span>cartera_medica_estado_id</span></div></div></div><div class="tbl" id="t_cartera_medica_estado" style="left: -654.833px; top: 1013.85px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">cartera_medica_estado</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>apm_id</span></div><div class="tr"><span class="bfk">FK</span><span>doctor_id</span></div><div class="tr"><span class="bfk">FK</span><span>gerente_id</span></div><div class="tr"><span class="bfk">FK</span><span>aprobador_id</span></div><div class="tr"><span class="bfk">FK</span><span>motivo_estado_id</span></div><div class="tr"><span>estado</span></div><div class="tr"><span>motivo_rechazo</span></div><div class="tr"><span>fecha_solicitud</span></div><div class="tr"><span>fecha_confirmacion</span></div><div class="tr"><span>comentarios</span></div></div></div><div class="tbl" id="t_cartera_farmacia" style="left: 1206.31px; top: 1448.83px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">cartera_farmacia</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>apm_id</span></div><div class="tr"><span class="bfk">FK</span><span>farmacia_id</span></div><div class="tr"><span class="bfk">FK</span><span>datos_visita_id</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span class="bfk">FK</span><span>cartera_farmacia_estado_id</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_datos_visita" style="left: 56.0953px; top: 1347.36px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">datos_visita</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>institucion_id</span></div><div class="tr"><span>turno</span></div><div class="tr"><span class="bfk">FK</span><span>especialidad_id</span></div><div class="tr"><span>frecuencia</span></div><div class="tr"><span class="bfk">FK</span><span>asistente_id</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span class="bfk">FK</span><span>id_direccion</span></div><div class="tr"><span>estancia</span></div></div></div><div class="tbl" id="t_datos_visita_horario_visita" style="left: 55.4457px; top: 1614.93px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">datos_visita_horario_visita</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>horario_visita_id</span></div><div class="tr"><span class="bfk">FK</span><span>datos_visita_id</span></div></div></div><div class="tbl" id="t_horario_visita" style="left: 58.7986px; top: 1723.91px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">horario_visita</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>dia</span></div><div class="tr"><span>desde</span></div><div class="tr"><span>hasta</span></div></div></div><div class="tbl" id="t_farmacia" style="left: 2315.4px; top: 395.743px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">farmacia</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre_fantasia</span></div><div class="tr"><span>CUFE</span></div><div class="tr"><span>razon_social</span></div><div class="tr"><span>cuit</span></div><div class="tr"><span class="bfk">FK</span><span>idTipo</span></div><div class="tr"><span class="bfk">FK</span><span>idCadena</span></div><div class="tr"><span class="bfk">FK</span><span>idCategoria</span></div><div class="tr"><span class="bfk">FK</span><span>idPotencial</span></div><div class="tr"><span>esPrincipalEnCadena</span></div><div class="tr"><span class="bfk">FK</span><span>idDireccion</span></div><div class="tr"><span>CPA_auditoria</span></div><div class="tr"><span>bono_pap</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_farmacia_categoria" style="left: 2302.92px; top: 254.911px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">farmacia_categoria</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>orden</span></div><div class="tr"><span>descripcion</span></div></div></div><div class="tbl" id="t_farmacia_operacion" style="left: 3042.79px; top: 2090.39px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">farmacia_operacion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>descripcion</span></div></div></div><div class="tbl" id="t_institucion" style="left: 1406.95px; top: 1079.65px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">institucion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span class="bfk">FK</span><span>id_categoria</span></div><div class="tr"><span class="bfk">FK</span><span>id_tipo</span></div><div class="tr"><span>razon_social</span></div><div class="tr"><span>telefono</span></div><div class="tr"><span>identificacion</span></div><div class="tr"><span class="bfk">FK</span><span>id_direccion</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_institucion_categoria" style="left: 1391.44px; top: 1297.71px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">institucion_categoria</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div></div></div><div class="tbl" id="t_institucion_categoria_tmp" style="left: 3058.18px; top: 1956.36px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">institucion_categoria_tmp</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div></div></div><div class="tbl" id="t_producto" style="left: 943.567px; top: -109.967px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">producto</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>descripcion</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>abreviatura</span></div><div class="tr"><span class="bfk">FK</span><span>id_linea</span></div><div class="tr"><span class="bfk">FK</span><span>id_especialidad</span></div><div class="tr"><span class="bfk">FK</span><span>id_categoria</span></div></div></div><div class="tbl" id="t_familia_producto" style="left: 2861.78px; top: -662.704px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">familia_producto</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>nombre_corto</span></div><div class="tr"><span>descripcion</span></div><div class="tr"><span>accion_terapeutica</span></div><div class="tr"><span>principio_activo</span></div><div class="tr"><span>muestraMedica</span></div><div class="tr"><span>obra_social</span></div><div class="tr"><span>prepaga</span></div><div class="tr"><span>en_stock</span></div><div class="tr"><span>linea</span></div><div class="tr"><span>url_imagen</span></div><div class="tr"><span>url_prospecto</span></div></div></div><div class="tbl" id="t_catalogo_productos" style="left: 3217.39px; top: -677.034px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">catalogo_productos</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>cod_sap</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>grupo_familia</span></div><div class="tr"><span>familia_producto</span></div><div class="tr"><span>unidad_negocio</span></div><div class="tr"><span>especialidad</span></div><div class="tr"><span>precio</span></div><div class="tr"><span>precio_vigencia</span></div><div class="tr"><span>activo</span></div><div class="tr"><span class="bfk">FK</span><span>id_familia</span></div><div class="tr"><span>ean_producto</span></div><div class="tr"><span>cod_dispro</span></div><div class="tr"><span>sublinea</span></div></div></div><div class="tbl" id="t_categoria_producto" style="left: 938.1px; top: -246.3px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">categoria_producto</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>descripcion</span></div></div></div><div class="tbl" id="t_categoria_promocion" style="left: 2869.04px; top: -288.302px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">categoria_promocion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>abreviatura</span></div><div class="tr"><span>nombre_categoria</span></div><div class="tr"><span>orden</span></div></div></div><div class="tbl" id="t_detalle_promocion_producto" style="left: 2449.57px; top: -507.776px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">detalle_promocion_producto</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_familia_producto</span></div><div class="tr"><span class="bfk">FK</span><span>id_grilla</span></div><div class="tr"><span class="bfk">FK</span><span>id_categoria_promocion</span></div><div class="tr"><span class="bfk">FK</span><span>id_ciclo</span></div><div class="tr"><span>valor</span></div><div class="tr"><span>estado_ciclo</span></div><div class="tr"><span>estado_grilla</span></div><div class="tr"><span>orden</span></div></div></div><div class="tbl" id="t_grilla" style="left: 2006.74px; top: -464.445px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">grilla</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>abreviatura</span></div><div class="tr"><span>nombre_grilla</span></div><div class="tr"><span class="bfk">FK</span><span>id_linea</span></div></div></div><div class="tbl" id="t_ciclo" style="left: 2872.92px; top: -400.638px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">ciclo</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>inicio</span></div><div class="tr"><span>fin</span></div><div class="tr"><span>nombre</span></div></div></div><div class="tbl" id="t_linea" style="left: 1281.34px; top: -326.469px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">linea</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>abreviatura</span></div><div class="tr"><span>icono</span></div></div></div><div class="tbl" id="t_linea_apm" style="left: 1669.83px; top: -263.369px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">linea_apm</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_apm</span></div><div class="tr"><span class="bfk">FK</span><span>id_linea</span></div></div></div><div class="tbl" id="t_linea_especialidad" style="left: 652.263px; top: -351.891px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">linea_especialidad</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>linea_id</span></div><div class="tr"><span class="bfk">FK</span><span>especialidad_id</span></div></div></div><div class="tbl" id="t_especialidad" style="left: -142.814px; top: -84.5628px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">especialidad</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_especiaSubespecialidad" style="left: 218.75px; top: 165.631px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">especiaSubespecialidad</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span class="bfk">FK</span><span>id_especialidad</span></div></div></div><div class="tbl" id="t_sociedad_cientifica" style="left: 357.799px; top: 319.74px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">sociedad_cientifica</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>siglas</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_categoria_doctor" style="left: 342.114px; top: 610.309px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">categoria_doctor</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>puntaje</span></div></div></div><div class="tbl" id="t_loyalty_doctor" style="left: 90.4832px; top: 379.47px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">loyalty_doctor</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>puntaje</span></div></div></div><div class="tbl" id="t_relacion_categoria_doctor" style="left: 89.1518px; top: 589.792px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">relacion_categoria_doctor</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>idrelacion</span></div><div class="tr"><span class="bfk">FK</span><span>doctor_id</span></div><div class="tr"><span class="bfk">FK</span><span>categoria_doctor_id</span></div><div class="tr"><span>estado</span></div><div class="tr"><span>fechalata</span></div><div class="tr"><span>fechamodificacion</span></div></div></div><div class="tbl" id="t_tag" style="left: 327.064px; top: 470.257px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">tag</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>tipo</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_tag_doctor" style="left: 83.4871px; top: 493.152px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">tag_doctor</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>tag_id</span></div><div class="tr"><span class="bfk">FK</span><span>doctor_id</span></div></div></div><div class="tbl" id="t_motivo" style="left: 3036.82px; top: 2219.57px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">motivo</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>id_tipo</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>fecha_futuro</span></div></div></div><div class="tbl" id="t_material_promocional" style="left: 394.167px; top: -167.933px; border-color: rgb(0, 184, 148); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0b3d2e;color:#a0f0d0;border-bottom:1px solid #00b894">material_promocional</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_tipo</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>descripcion</span></div><div class="tr"><span class="bfk">FK</span><span>especialidad_id</span></div><div class="tr"><span class="bfk">FK</span><span>producto_id</span></div><div class="tr"><span>archivo</span></div><div class="tr"><span>archivo_extension</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>codigo</span></div><div class="tr"><span>tamanio</span></div><div class="tr"><span>estado_eliminado</span></div></div></div><div class="tbl" id="t_material_promocional_productos" style="left: 659.3px; top: -61.866px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">material_promocional_productos</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>id_material_promocional</span></div><div class="tr"><span class="bfk">FK</span><span>id_producto</span></div></div></div><div class="tbl" id="t_apm_caja_recepcion" style="left: 592.672px; top: 2567.44px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">apm_caja_recepcion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_apm</span></div><div class="tr"><span>fecha_envio</span></div><div class="tr"><span>comentarios</span></div><div class="tr"><span>estado_aprobacion</span></div><div class="tr"><span>fecha_aprobacion</span></div></div></div><div class="tbl" id="t_apm_caja_recepcion_productos" style="left: 890.626px; top: 2578.35px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">apm_caja_recepcion_productos</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_caja_recepcion</span></div><div class="tr"><span>codigo_producto</span></div><div class="tr"><span>nombre_producto</span></div></div></div><div class="tbl" id="t_apm_muestras_aprobacion" style="left: 1251.1px; top: 2549.74px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">apm_muestras_aprobacion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_recepcion_productos</span></div><div class="tr"><span>codigo_muestra</span></div><div class="tr"><span>producto_muestra</span></div><div class="tr"><span>lote</span></div><div class="tr"><span>vecimiento</span></div><div class="tr"><span>cantidad_enviada</span></div><div class="tr"><span>cantidad_aprobada</span></div><div class="tr"><span>fecha_envio</span></div><div class="tr"><span>justificacion</span></div></div></div><div class="tbl" id="t_conexion_apm" style="left: 832.234px; top: 2386.32px; border-color: rgb(108, 92, 231); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#2d1f6e;color:#d6c9ff;border-bottom:1px solid #6c5ce7">conexion_apm</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_apm</span></div><div class="tr"><span>fecha</span></div><div class="tr"><span>device</span></div></div></div><div class="tbl" id="t_usuario" style="left: 3285.27px; top: 2111.45px; border-color: rgb(9, 132, 227); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a2a4a;color:#a0c8ff;border-bottom:1px solid #0984e3">usuario</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>apellido</span></div><div class="tr"><span>email</span></div><div class="tr"><span>legajo</span></div><div class="tr"><span>rol</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_by</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>alias_geodata</span></div><div class="tr"><span>deleted</span></div><div class="tr"><span>deletedBy</span></div><div class="tr"><span>deletedDate</span></div><div class="tr"><span class="bfk">FK</span><span>id_unidad_negocio</span></div><div class="tr"><span>codigoGerente</span></div></div></div><div class="tbl" id="t_unidad_negocio" style="left: 3747.85px; top: 2226.96px; border-color: rgb(9, 132, 227); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a2a4a;color:#a0c8ff;border-bottom:1px solid #0984e3">unidad_negocio</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>created_date</span></div><div class="tr"><span>modified_date</span></div><div class="tr"><span>modified_by</span></div></div></div><div class="tbl" id="t_direccion" style="left: 1329.64px; top: 287.994px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">direccion</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_codigo_postal</span></div><div class="tr"><span>numero</span></div><div class="tr"><span>detalle</span></div><div class="tr"><span>piso</span></div><div class="tr"><span>departamento</span></div><div class="tr"><span>otro</span></div><div class="tr"><span>PlaceID</span></div><div class="tr"><span>location_lat</span></div><div class="tr"><span>location_long</span></div><div class="tr"><span>tipo_carga</span></div></div></div><div class="tbl" id="t_codigo_postal" style="left: 1603.86px; top: 183.339px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">codigo_postal</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>cpa</span></div><div class="tr"><span>par_impar</span></div><div class="tr"><span class="bfk">FK</span><span>id_provincia</span></div><div class="tr"><span class="bfk">FK</span><span>id_localidad</span></div><div class="tr"><span class="bfk">FK</span><span>id_ciudad</span></div><div class="tr"><span class="bfk">FK</span><span>id_calle</span></div><div class="tr"><span>desde</span></div><div class="tr"><span>hasta</span></div></div></div><div class="tbl" id="t_provincia" style="left: 1765.52px; top: 32.4636px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">provincia</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span class="bfk">FK</span><span>id_pais</span></div><div class="tr"><span>inactivo</span></div><div class="tr"><span>EsEntidadMatriculanteProvincial</span></div><div class="tr"><span>ISO_CODE</span></div></div></div><div class="tbl" id="t_localidad" style="left: 2187.5px; top: 75.8941px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">localidad</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span class="bfk">FK</span><span>id_provincia</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_ciudad" style="left: 2076.51px; top: 198.684px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">ciudad</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span class="bfk">FK</span><span>id_localidad</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_calle" style="left: 1842.21px; top: 304.848px; border-color: rgb(0, 206, 201); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a3535;color:#a0efef;border-bottom:1px solid #00cec9">calle</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span>nombre</span></div><div class="tr"><span>id_tipo_calle</span></div><div class="tr"><span class="bfk">FK</span><span>id_ciudad</span></div><div class="tr"><span>inactivo</span></div></div></div><div class="tbl" id="t_direcciones_medicos" style="left: 145.606px; top: 907.228px; border-color: rgb(225, 112, 85); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#3d1a0e;color:#ffd0c0;border-bottom:1px solid #e17055">direcciones_medicos</div><div class="tb"><div class="tr pk"><span class="bpk">PK</span><span>id</span></div><div class="tr"><span class="bfk">FK</span><span>id_medico</span></div><div class="tr"><span class="bfk">FK</span><span>id_direccion</span></div><div class="tr"><span>active</span></div></div></div><div class="tbl" id="t_UltimaMillaMarca" style="left: -657.803px; top: 311.969px; border-color: rgb(9, 132, 227); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a2a4a;color:#a0c8ff;border-bottom:1px solid #0984e3">UltimaMillaMarca</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>idMedicoCUP</span></div><div class="tr"><span>idMarca</span></div><div class="tr"><span>idMercado</span></div><div class="tr"><span>idLaboratorio</span></div><div class="tr"><span>marcaNombre</span></div><div class="tr"><span>idRegion</span></div><div class="tr"><span>regionNombre</span></div><div class="tr"><span>categoriaMedico</span></div><div class="tr"><span>ShareMarca</span></div><div class="tr"><span>ShareMarcaMercado</span></div><div class="tr"><span>ShareMarcaMes</span></div><div class="tr"><span>ShareMarcaMes-1</span></div><div class="tr"><span>IEMarcaMes</span></div><div class="tr"><span>IEMarcaTrim</span></div><div class="tr"><span>ShareMarcaTrim</span></div><div class="tr"><span>ShareMarcaTrim-1</span></div><div class="tr"><span>IEMarcaYTD</span></div><div class="tr"><span>ShareMarcaYTD</span></div><div class="tr"><span>ShareMarcaYTD-1</span></div><div class="tr"><span>IEMarcaMAT</span></div><div class="tr"><span>ShareMarcaMAT-1</span></div></div></div><div class="tbl" id="t_UltimaMillaMedico" style="left: -656.758px; top: 693.28px; border-color: rgb(9, 132, 227); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a2a4a;color:#a0c8ff;border-bottom:1px solid #0984e3">UltimaMillaMedico</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>idMedicoCUP</span></div><div class="tr"><span class="bfk">FK</span><span>idMedicoAPX</span></div><div class="tr"><span>medicoCUP</span></div><div class="tr"><span>medicoAPX</span></div><div class="tr"><span>IETrim</span></div><div class="tr"><span>ShareTrim</span></div><div class="tr"><span>ShareTrim-1</span></div><div class="tr"><span>IEYTD</span></div><div class="tr"><span>ShareYTD</span></div><div class="tr"><span>ShareYTD-1</span></div><div class="tr"><span>IEMAT</span></div><div class="tr"><span>ShareMAT</span></div><div class="tr"><span>ShareMAT-1</span></div><div class="tr"><span>IEMes</span></div><div class="tr"><span>ShareMes</span></div><div class="tr"><span>ShareMes-1</span></div></div></div><div class="tbl" id="t_UltimaMillaObjetivoMarcaMercado" style="left: -651.157px; top: 129.76px; border-color: rgb(9, 132, 227); box-shadow: rgba(0, 0, 0, 0.6) 0px 2px 12px;"><div class="th" style="background:#0a2a4a;color:#a0c8ff;border-bottom:1px solid #0984e3">UltimaMillaObjetivoMarcaMercado</div><div class="tb"><div class="tr"><span class="bfk">FK</span><span>idEspecialidad</span></div><div class="tr"><span>idMarca</span></div><div class="tr"><span>idMercado</span></div><div class="tr"><span>marcaNombre</span></div></div></div></div>
+  <div id="tb">
+    <button class="zb" id="zi">+</button>
+    <div id="zl">132%</div>
+    <button class="zb" id="zo">−</button>
+    <button class="zb" id="zf" style="font-size:12px">⊡</button>
+  </div>
+</div>
+<script>
+const C={
+  core:    {bg:'#2d1f6e',border:'#6c5ce7',text:'#d6c9ff'},
+  cat:     {bg:'#0b3d2e',border:'#00b894',text:'#a0f0d0'},
+  rel:     {bg:'#3d1a0e',border:'#e17055',text:'#ffd0c0'},
+  analytics:{bg:'#0a2a4a',border:'#0984e3',text:'#a0c8ff'},
+  geo:     {bg:'#0a3535',border:'#00cec9',text:'#a0efef'},
+};
+const TABLES=[
+  {id:'apm',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'primerNombre'},{n:'segundoNombre'},{n:'primerApellido'},{n:'segundoApellido'},
+    {n:'email'},{n:'ad_oid'},{n:'profile_image'},{n:'fecha_nacimiento'},{n:'telefono'},
+    {n:'gerente_regional_id',k:'FK'},{n:'dias_registro_visita'},{n:'legajo'},{n:'inactivo'},
+    {n:'created_date'},{n:'modified_by'},{n:'modified_date'},{n:'id_direccion_entrega',k:'FK'},
+    {n:'id_direccion_particular',k:'FK'},{n:'id_linea',k:'FK'},{n:'alias_geodata'},
+    {n:'deleted'},{n:'deletedBy'},{n:'deletedDate'},{n:'configEntidad'},
+    {n:'codigoPromotor'},{n:'rolWeb'},{n:'tipoPromotor'}
+  ]},
+  {id:'doctor',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'primerNombre'},{n:'segundoNombre'},{n:'primerApellido'},{n:'segundoApellido'},
+    {n:'fechaNacimiento'},{n:'email'},{n:'matriculaNacional'},{n:'matriculaProvincial'},
+    {n:'especialidad_id',k:'FK'},{n:'especialidadSecundaria_id',k:'FK'},{n:'enteEmisor_id',k:'FK'},
+    {n:'telefono'},{n:'created_date'},{n:'modified_by'},{n:'modified_date'},{n:'px'},{n:'sexo'},
+    {n:'estado_civil'},{n:'estado_doctor_id',k:'FK'},{n:'profile_image'},{n:'doctor_app'},
+    {n:'inactivo'},{n:'flagDocente'},{n:'lugarDocente'},{n:'flagCoordinador'},{n:'lugarCoordinador'},
+    {n:'flagLiderOpi'},{n:'ObsLiderOpi'},{n:'flagSocieCienti'},{n:'nomSocieCienti'},{n:'cargSocieCienti'},
+    {n:'flagInteCienti'},{n:'obsSocieCienti'},{n:'espeSubespecialidad_id',k:'FK'},
+    {n:'flag_residente'},{n:'flag_jefe_servicio'},{n:'sociedad_cientifica_id',k:'FK'},
+    {n:'Codigo_Medico'},{n:'loyalty_id',k:'FK'},{n:'categoria_id',k:'FK'},{n:'doctor_id'},
+    {n:'EntidadMatriculaNacional_id',k:'FK'},{n:'EntidadMatriculaProvincial_id',k:'FK'},
+    {n:'deleted'},{n:'deletedBy'},{n:'deletedDate'},{n:'dni'},{n:'residente_categoria'}
+  ]},
+  {id:'agenda',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'inicio'},{n:'fin'},{n:'apm_id',k:'FK'},{n:'doctor_id',k:'FK'},
+    {n:'descripcion'},{n:'lugar'},{n:'turno'},{n:'agenda_tipo_id',k:'FK'},{n:'institucion_id',k:'FK'},
+    {n:'visita_exitosa'},{n:'observaciones'},{n:'acompanante'},{n:'direccion'},
+    {n:'perfil'},{n:'agenda_motivo_fallida_id',k:'FK'},{n:'lastUpdated'},{n:'visita_tipo'},
+    {n:'inactivo'},{n:'porcentaje_turno_manana'},{n:'porcentaje_turno_tarde'},
+    {n:'requires_approval'},{n:'approved'},{n:'approved_by'},{n:'plataforma'},
+    {n:'direccion_id',k:'FK'},{n:'receiptName'},{n:'id_agenda_origen',k:'FK'},
+    {n:'farmacia_id',k:'FK'},{n:'deleted'},{n:'deletedBy'},{n:'deletedDate'}
+  ]},
+  {id:'agenda_muestra',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'id_agenda',k:'FK'},{n:'nombre'},{n:'cantidad'},{n:'lote'},{n:'productCode'}
+  ]},
+  {id:'agenda_producto',g:'rel',cols:[
+    {n:'id',k:'PK'},{n:'id_agenda',k:'FK'},{n:'id_producto',k:'FK'}
+  ]},
+  {id:'cartera_medica',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'apm_id',k:'FK'},{n:'doctor_id',k:'FK'},{n:'datos_visita_id',k:'FK'},
+    {n:'approved'},{n:'created_date'},{n:'modified_by'},{n:'modified_date'},
+    {n:'inactivo'},{n:'cartera_medica_estado_id',k:'FK'}
+  ]},
+  {id:'cartera_medica_estado',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'apm_id',k:'FK'},{n:'doctor_id',k:'FK'},{n:'gerente_id',k:'FK'},
+    {n:'aprobador_id',k:'FK'},{n:'motivo_estado_id',k:'FK'},{n:'estado'},
+    {n:'motivo_rechazo'},{n:'fecha_solicitud'},{n:'fecha_confirmacion'},{n:'comentarios'}
+  ]},
+  {id:'cartera_farmacia',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'apm_id',k:'FK'},{n:'farmacia_id',k:'FK'},{n:'datos_visita_id',k:'FK'},
+    {n:'created_date'},{n:'modified_by'},{n:'modified_date'},
+    {n:'cartera_farmacia_estado_id',k:'FK'},{n:'inactivo'}
+  ]},
+  {id:'datos_visita',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'institucion_id',k:'FK'},{n:'turno'},{n:'especialidad_id',k:'FK'},
+    {n:'frecuencia'},{n:'asistente_id',k:'FK'},{n:'created_date'},{n:'modified_by'},
+    {n:'modified_date'},{n:'id_direccion',k:'FK'},{n:'estancia'}
+  ]},
+  {id:'datos_visita_horario_visita',g:'rel',cols:[
+    {n:'horario_visita_id',k:'FK'},{n:'datos_visita_id',k:'FK'}
+  ]},
+  {id:'horario_visita',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'dia'},{n:'desde'},{n:'hasta'}
+  ]},
+  {id:'farmacia',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre_fantasia'},{n:'CUFE'},{n:'razon_social'},{n:'cuit'},
+    {n:'idTipo',k:'FK'},{n:'idCadena',k:'FK'},{n:'idCategoria',k:'FK'},{n:'idPotencial',k:'FK'},
+    {n:'esPrincipalEnCadena'},{n:'idDireccion',k:'FK'},{n:'CPA_auditoria'},{n:'bono_pap'},{n:'inactivo'}
+  ]},
+  {id:'farmacia_categoria',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'orden'},{n:'descripcion'}
+  ]},
+  {id:'farmacia_operacion',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'descripcion'}
+  ]},
+  {id:'institucion',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'id_categoria',k:'FK'},{n:'id_tipo',k:'FK'},
+    {n:'razon_social'},{n:'telefono'},{n:'identificacion'},{n:'id_direccion',k:'FK'},{n:'inactivo'}
+  ]},
+  {id:'institucion_categoria',g:'cat',cols:[{n:'id',k:'PK'},{n:'nombre'}]},
+  {id:'institucion_categoria_tmp',g:'cat',cols:[{n:'id',k:'PK'},{n:'nombre'}]},
+  {id:'producto',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'descripcion'},{n:'inactivo'},{n:'abreviatura'},
+    {n:'id_linea',k:'FK'},{n:'id_especialidad',k:'FK'},{n:'id_categoria',k:'FK'}
+  ]},
+  {id:'familia_producto',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'nombre_corto'},{n:'descripcion'},{n:'accion_terapeutica'},
+    {n:'principio_activo'},{n:'muestraMedica'},{n:'obra_social'},{n:'prepaga'},
+    {n:'en_stock'},{n:'linea'},{n:'url_imagen'},{n:'url_prospecto'}
+  ]},
+  {id:'catalogo_productos',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'cod_sap'},{n:'nombre'},{n:'grupo_familia'},{n:'familia_producto'},
+    {n:'unidad_negocio'},{n:'especialidad'},{n:'precio'},{n:'precio_vigencia'},
+    {n:'activo'},{n:'id_familia',k:'FK'},{n:'ean_producto'},{n:'cod_dispro'},{n:'sublinea'}
+  ]},
+  {id:'categoria_producto',g:'cat',cols:[{n:'id',k:'PK'},{n:'descripcion'}]},
+  {id:'categoria_promocion',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'abreviatura'},{n:'nombre_categoria'},{n:'orden'}
+  ]},
+  {id:'detalle_promocion_producto',g:'rel',cols:[
+    {n:'id',k:'PK'},{n:'id_familia_producto',k:'FK'},{n:'id_grilla',k:'FK'},
+    {n:'id_categoria_promocion',k:'FK'},{n:'id_ciclo',k:'FK'},
+    {n:'valor'},{n:'estado_ciclo'},{n:'estado_grilla'},{n:'orden'}
+  ]},
+  {id:'grilla',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'abreviatura'},{n:'nombre_grilla'},{n:'id_linea',k:'FK'}
+  ]},
+  {id:'ciclo',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'inicio'},{n:'fin'},{n:'nombre'}
+  ]},
+  {id:'linea',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'abreviatura'},{n:'icono'}
+  ]},
+  {id:'linea_apm',g:'rel',cols:[
+    {n:'id',k:'PK'},{n:'id_apm',k:'FK'},{n:'id_linea',k:'FK'}
+  ]},
+  {id:'linea_especialidad',g:'rel',cols:[
+    {n:'linea_id',k:'FK'},{n:'especialidad_id',k:'FK'}
+  ]},
+  {id:'especialidad',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'inactivo'}
+  ]},
+  {id:'especiaSubespecialidad',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'inactivo'},{n:'id_especialidad',k:'FK'}
+  ]},
+  {id:'sociedad_cientifica',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'siglas'},{n:'inactivo'}
+  ]},
+  {id:'categoria_doctor',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'puntaje'}
+  ]},
+  {id:'loyalty_doctor',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'puntaje'}
+  ]},
+  {id:'relacion_categoria_doctor',g:'rel',cols:[
+    {n:'idrelacion',k:'PK'},{n:'doctor_id',k:'FK'},{n:'categoria_doctor_id',k:'FK'},
+    {n:'estado'},{n:'fechalata'},{n:'fechamodificacion'}
+  ]},
+  {id:'tag',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'tipo'},{n:'inactivo'}
+  ]},
+  {id:'tag_doctor',g:'rel',cols:[
+    {n:'tag_id',k:'FK'},{n:'doctor_id',k:'FK'}
+  ]},
+  {id:'motivo',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'id_tipo'},{n:'nombre'},{n:'inactivo'},{n:'fecha_futuro'}
+  ]},
+  {id:'material_promocional',g:'cat',cols:[
+    {n:'id',k:'PK'},{n:'id_tipo',k:'FK'},{n:'nombre'},{n:'descripcion'},{n:'especialidad_id',k:'FK'},
+    {n:'producto_id',k:'FK'},{n:'archivo'},{n:'archivo_extension'},{n:'created_date'},
+    {n:'modified_by'},{n:'modified_date'},{n:'inactivo'},{n:'codigo'},{n:'tamanio'},{n:'estado_eliminado'}
+  ]},
+  {id:'material_promocional_productos',g:'rel',cols:[
+    {n:'id_material_promocional',k:'FK'},{n:'id_producto',k:'FK'}
+  ]},
+  {id:'apm_caja_recepcion',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'id_apm',k:'FK'},{n:'fecha_envio'},{n:'comentarios'},
+    {n:'estado_aprobacion'},{n:'fecha_aprobacion'}
+  ]},
+  {id:'apm_caja_recepcion_productos',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'id_caja_recepcion',k:'FK'},{n:'codigo_producto'},{n:'nombre_producto'}
+  ]},
+  {id:'apm_muestras_aprobacion',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'id_recepcion_productos',k:'FK'},{n:'codigo_muestra'},
+    {n:'producto_muestra'},{n:'lote'},{n:'vecimiento'},{n:'cantidad_enviada'},
+    {n:'cantidad_aprobada'},{n:'fecha_envio'},{n:'justificacion'}
+  ]},
+  {id:'conexion_apm',g:'core',cols:[
+    {n:'id',k:'PK'},{n:'id_apm',k:'FK'},{n:'fecha'},{n:'device'}
+  ]},
+  {id:'usuario',g:'analytics',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'apellido'},{n:'email'},{n:'legajo'},{n:'rol'},
+    {n:'created_date'},{n:'modified_by'},{n:'modified_date'},{n:'inactivo'},
+    {n:'alias_geodata'},{n:'deleted'},{n:'deletedBy'},{n:'deletedDate'},
+    {n:'id_unidad_negocio',k:'FK'},{n:'codigoGerente'}
+  ]},
+  {id:'unidad_negocio',g:'analytics',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'created_date'},{n:'modified_date'},{n:'modified_by'}
+  ]},
+  {id:'direccion',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'id_codigo_postal',k:'FK'},{n:'numero'},{n:'detalle'},{n:'piso'},
+    {n:'departamento'},{n:'otro'},{n:'PlaceID'},{n:'location_lat'},{n:'location_long'},{n:'tipo_carga'}
+  ]},
+  {id:'codigo_postal',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'cpa'},{n:'par_impar'},{n:'id_provincia',k:'FK'},{n:'id_localidad',k:'FK'},
+    {n:'id_ciudad',k:'FK'},{n:'id_calle',k:'FK'},{n:'desde'},{n:'hasta'}
+  ]},
+  {id:'provincia',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'id_pais',k:'FK'},{n:'inactivo'},
+    {n:'EsEntidadMatriculanteProvincial'},{n:'ISO_CODE'}
+  ]},
+  {id:'localidad',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'id_provincia',k:'FK'},{n:'inactivo'}
+  ]},
+  {id:'ciudad',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'id_localidad',k:'FK'},{n:'inactivo'}
+  ]},
+  {id:'calle',g:'geo',cols:[
+    {n:'id',k:'PK'},{n:'nombre'},{n:'id_tipo_calle'},{n:'id_ciudad',k:'FK'},{n:'inactivo'}
+  ]},
+  {id:'direcciones_medicos',g:'rel',cols:[
+    {n:'id',k:'PK'},{n:'id_medico',k:'FK'},{n:'id_direccion',k:'FK'},{n:'active'}
+  ]},
+  {id:'UltimaMillaMarca',g:'analytics',cols:[
+    {n:'idMedicoCUP',k:'FK'},{n:'idMarca'},{n:'idMercado'},{n:'idLaboratorio'},
+    {n:'marcaNombre'},{n:'idRegion'},{n:'regionNombre'},{n:'categoriaMedico'},
+    {n:'ShareMarca'},{n:'ShareMarcaMercado'},{n:'ShareMarcaMes'},{n:'ShareMarcaMes-1'},
+    {n:'IEMarcaMes'},{n:'IEMarcaTrim'},{n:'ShareMarcaTrim'},{n:'ShareMarcaTrim-1'},
+    {n:'IEMarcaYTD'},{n:'ShareMarcaYTD'},{n:'ShareMarcaYTD-1'},{n:'IEMarcaMAT'},{n:'ShareMarcaMAT-1'}
+  ]},
+  {id:'UltimaMillaMedico',g:'analytics',cols:[
+    {n:'idMedicoCUP',k:'FK'},{n:'idMedicoAPX',k:'FK'},{n:'medicoCUP'},{n:'medicoAPX'},
+    {n:'IETrim'},{n:'ShareTrim'},{n:'ShareTrim-1'},{n:'IEYTD'},{n:'ShareYTD'},{n:'ShareYTD-1'},
+    {n:'IEMAT'},{n:'ShareMAT'},{n:'ShareMAT-1'},{n:'IEMes'},{n:'ShareMes'},{n:'ShareMes-1'}
+  ]},
+  {id:'UltimaMillaObjetivoMarcaMercado',g:'analytics',cols:[
+    {n:'idEspecialidad',k:'FK'},{n:'idMarca'},{n:'idMercado'},{n:'marcaNombre'}
+  ]},
+];
+
+const RELS=[
+  ['apm','agenda'],['apm','cartera_medica'],['apm','cartera_farmacia'],
+  ['apm','linea_apm'],['apm','apm_caja_recepcion'],['apm','conexion_apm'],['apm','cartera_medica_estado'],
+  ['doctor','agenda'],['doctor','cartera_medica'],['doctor','cartera_medica_estado'],
+  ['doctor','relacion_categoria_doctor'],['doctor','tag_doctor'],
+  ['doctor','direcciones_medicos'],['doctor','UltimaMillaMedico'],['doctor','UltimaMillaMarca'],
+  ['especialidad','doctor'],['especialidad','datos_visita'],['especialidad','linea_especialidad'],
+  ['especialidad','material_promocional'],['especialidad','UltimaMillaObjetivoMarcaMercado'],
+  ['especiaSubespecialidad','doctor'],['especiaSubespecialidad','especialidad'],
+  ['sociedad_cientifica','doctor'],['categoria_doctor','relacion_categoria_doctor'],
+  ['loyalty_doctor','doctor'],['tag','tag_doctor'],
+  ['agenda','agenda_muestra'],['agenda','agenda_producto'],
+  ['farmacia','agenda'],['farmacia','cartera_farmacia'],['farmacia_categoria','farmacia'],
+  ['institucion','agenda'],['institucion','datos_visita'],['institucion_categoria','institucion'],
+  ['datos_visita','cartera_medica'],['datos_visita','cartera_farmacia'],
+  ['datos_visita','datos_visita_horario_visita'],['horario_visita','datos_visita_horario_visita'],
+  ['linea','linea_apm'],['linea','linea_especialidad'],['linea','producto'],['linea','grilla'],
+  ['producto','agenda_producto'],['producto','material_promocional_productos'],
+  ['familia_producto','catalogo_productos'],['familia_producto','detalle_promocion_producto'],
+  ['categoria_producto','producto'],['categoria_promocion','detalle_promocion_producto'],
+  ['grilla','detalle_promocion_producto'],['ciclo','detalle_promocion_producto'],
+  ['material_promocional','material_promocional_productos'],
+  ['apm_caja_recepcion','apm_caja_recepcion_productos'],
+  ['apm_caja_recepcion_productos','apm_muestras_aprobacion'],
+  ['unidad_negocio','usuario'],
+  ['direccion','farmacia'],['direccion','institucion'],['direccion','datos_visita'],['direccion','direcciones_medicos'],
+  ['codigo_postal','direccion'],['provincia','codigo_postal'],['provincia','localidad'],
+  ['localidad','ciudad'],['localidad','codigo_postal'],['ciudad','calle'],['ciudad','codigo_postal'],['calle','codigo_postal'],
+];
+
+const POS={
+  apm:{x:440,y:80},doctor:{x:720,y:80},
+  agenda:{x:580,y:380},agenda_muestra:{x:400,y:620},agenda_producto:{x:580,y:620},
+  cartera_medica:{x:200,y:380},cartera_medica_estado:{x:40,y:580},
+  cartera_farmacia:{x:360,y:380},
+  datos_visita:{x:200,y:620},datos_visita_horario_visita:{x:40,y:820},horario_visita:{x:40,y:980},
+  farmacia:{x:780,y:380},farmacia_categoria:{x:1000,y:460},farmacia_operacion:{x:1000,y:580},
+  institucion:{x:780,y:620},institucion_categoria:{x:1000,y:700},institucion_categoria_tmp:{x:1000,y:800},
+  producto:{x:1180,y:80},familia_producto:{x:1380,y:80},catalogo_productos:{x:1580,y:80},
+  categoria_producto:{x:1180,y:340},categoria_promocion:{x:1380,y:340},
+  detalle_promocion_producto:{x:1380,y:540},grilla:{x:1580,y:340},ciclo:{x:1580,y:540},
+  linea:{x:1000,y:80},linea_apm:{x:1000,y:260},linea_especialidad:{x:1000,y:380},
+  especialidad:{x:1000,y:500},especiaSubespecialidad:{x:1000,y:700},
+  sociedad_cientifica:{x:720,y:820},categoria_doctor:{x:560,y:820},
+  loyalty_doctor:{x:720,y:1020},relacion_categoria_doctor:{x:460,y:1020},
+  tag:{x:200,y:1020},tag_doctor:{x:200,y:1200},
+  motivo:{x:40,y:220},
+  material_promocional:{x:1180,y:540},material_promocional_productos:{x:1180,y:780},
+  apm_caja_recepcion:{x:40,y:80},apm_caja_recepcion_productos:{x:40,y:360},apm_muestras_aprobacion:{x:40,y:600},
+  conexion_apm:{x:260,y:80},
+  usuario:{x:1780,y:80},unidad_negocio:{x:1780,y:320},
+  direccion:{x:1780,y:520},codigo_postal:{x:1780,y:760},
+  provincia:{x:1780,y:1000},localidad:{x:1980,y:1000},ciudad:{x:1980,y:1200},calle:{x:2180,y:1200},
+  direcciones_medicos:{x:1980,y:700},
+  UltimaMillaMarca:{x:720,y:1200},UltimaMillaMedico:{x:960,y:1200},UltimaMillaObjetivoMarcaMercado:{x:1200,y:1200},
+};
+
+const wrap=document.getElementById('cw'),world=document.getElementById('wo'),lsvg=document.getElementById('ln');
+let zoom=0.42,panX=30,panY=30;
+const pos={},els={};
+
+function applyT(){
+  world.style.transform=`translate(${panX}px,${panY}px) scale(${zoom})`;
+  document.getElementById('zl').textContent=Math.round(zoom*100)+'%';
+  drawLines();
+}
+function getEdge(id,toId){
+  const el=els[id];if(!el)return{x:0,y:0};
+  const p=pos[id],w=el.offsetWidth,h=el.offsetHeight;
+  const fx=p.x+w/2,fy=p.y+h/2;
+  const to=pos[toId],tel=els[toId];
+  const tx=to.x+(tel?tel.offsetWidth/2:0),ty=to.y+(tel?tel.offsetHeight/2:0);
+  const dx=tx-fx,dy=ty-fy;
+  if(Math.abs(dx)>Math.abs(dy)) return dx>0?{x:p.x+w,y:fy}:{x:p.x,y:fy};
+  return dy>0?{x:fx,y:p.y+h}:{x:fx,y:p.y};
+}
+function drawLines(){
+  const lw=1.8/zoom;
+  let h=`<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>`;
+  for(const [a,b] of RELS){
+    if(!els[a]||!els[b])continue;
+    const s=getEdge(a,b),e=getEdge(b,a);
+    const col=C[TABLES.find(t=>t.id===a)?.g||'cat'].border;
+    h+=`<path d="M${s.x},${s.y} C${s.x+(e.x-s.x)*0.45},${s.y} ${e.x+(s.x-e.x)*0.45},${e.y} ${e.x},${e.y}" fill="none" stroke="${col}" stroke-width="${lw}" opacity="0.8" marker-end="url(#arr)"/>`;
+  }
+  lsvg.innerHTML=h;lsvg.setAttribute('width',6000);lsvg.setAttribute('height',5000);
+}
+
+for(const t of TABLES){
+  const c=C[t.g]||C.cat;
+  const el=document.createElement('div');
+  el.className='tbl';el.id='t_'+t.id;
+  const p=POS[t.id]||{x:100,y:100};
+  pos[t.id]={...p};el.style.left=p.x+'px';el.style.top=p.y+'px';
+  el.style.borderColor=c.border;
+  let rows='';
+  for(const col of t.cols){
+    const badge=col.k==='PK'?'<span class="bpk">PK</span>':col.k==='FK'?'<span class="bfk">FK</span>':'';
+    rows+=`<div class="tr${col.k==='PK'?' pk':''}">${badge}<span>${col.n}</span></div>`;
+  }
+  el.innerHTML=`<div class="th" style="background:${c.bg};color:${c.text};border-bottom:1px solid ${c.border}">${t.id}</div><div class="tb">${rows}</div>`;
+  world.appendChild(el);els[t.id]=el;
+
+  let drag=false,ox=0,oy=0;
+  el.addEventListener('mousedown',e=>{
+    if(e.button!==0)return;drag=true;ox=e.clientX;oy=e.clientY;
+    el.style.zIndex=999;el.style.boxShadow=`0 4px 24px ${c.border}66`;
+    e.stopPropagation();e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!drag)return;
+    pos[t.id].x+=(e.clientX-ox)/zoom;pos[t.id].y+=(e.clientY-oy)/zoom;
+    el.style.left=pos[t.id].x+'px';el.style.top=pos[t.id].y+'px';
+    ox=e.clientX;oy=e.clientY;drawLines();
+  });
+  window.addEventListener('mouseup',()=>{if(drag){drag=false;el.style.zIndex='';el.style.boxShadow='0 2px 12px rgba(0,0,0,0.6)';}});
+}
+
+let pan=false,px0=0,py0=0,panX0=0,panY0=0;
+wrap.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;pan=true;px0=e.clientX;py0=e.clientY;panX0=panX;panY0=panY;wrap.classList.add('pan');
+});
+window.addEventListener('mousemove',e=>{if(!pan)return;panX=panX0+(e.clientX-px0);panY=panY0+(e.clientY-py0);applyT();});
+window.addEventListener('mouseup',()=>{pan=false;wrap.classList.remove('pan');});
+wrap.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=wrap.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  const f=e.deltaY<0?1.12:0.9,nz=Math.min(2,Math.max(0.1,zoom*f));
+  panX=mx-(mx-panX)*(nz/zoom);panY=my-(my-panY)*(nz/zoom);zoom=nz;applyT();
+},{passive:false});
+document.getElementById('zi').onclick=()=>{zoom=Math.min(2,zoom*1.2);applyT();};
+document.getElementById('zo').onclick=()=>{zoom=Math.max(0.1,zoom/1.2);applyT();};
+document.getElementById('zf').onclick=()=>{zoom=0.42;panX=30;panY=30;applyT();};
+applyT();
+</script>
+</body></html>

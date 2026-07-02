@@ -54,13 +54,25 @@ if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 
 from bedrock_agentcore import BedrockAgentCoreApp  # noqa: E402
-from agentcore.response_formatter import ResponseFormatter  # noqa: E402
-from agentcore.observability import (  # noqa: E402
-    RequestTracer,
-    emit_error_metric,
-    emit_metric,
-    timed_operation,
-)
+
+# Dual-path imports: support both local development (from agentcore.X)
+# and AgentCore runtime (from X directly, since /var/task is the root)
+try:
+    from agentcore.response_formatter import ResponseFormatter  # noqa: E402
+    from agentcore.observability import (  # noqa: E402
+        RequestTracer,
+        emit_error_metric,
+        emit_metric,
+        timed_operation,
+    )
+except ModuleNotFoundError:
+    from response_formatter import ResponseFormatter  # noqa: E402
+    from observability import (  # noqa: E402
+        RequestTracer,
+        emit_error_metric,
+        emit_metric,
+        timed_operation,
+    )
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -145,14 +157,24 @@ def _get_or_create_agent():
     from strands import Agent
     from strands.models import BedrockModel
 
-    from agentcore.toolkit import query_db
-    from agentcore.utils_tools import (
-        buscar_info_publica,
-        generar_brief,
-        generar_mensaje_cumpleanos,
-        obtener_minutas,
-    )
-    from agentcore.prompts import build_system_prompt
+    try:
+        from agentcore.toolkit import query_db
+        from agentcore.utils_tools import (
+            buscar_info_publica,
+            generar_brief,
+            generar_mensaje_cumpleanos,
+            obtener_minutas,
+        )
+        from agentcore.prompts import build_system_prompt
+    except ModuleNotFoundError:
+        from toolkit import query_db
+        from utils_tools import (
+            buscar_info_publica,
+            generar_brief,
+            generar_mensaje_cumpleanos,
+            obtener_minutas,
+        )
+        from prompts import build_system_prompt
 
     model = BedrockModel(
         model_id=config.model_id,
@@ -303,7 +325,10 @@ def _invoke_with_retries(
     """
     global _current_apm_id, _current_ciclo
 
-    from agentcore.error_handler import ErrorHandler
+    try:
+        from agentcore.error_handler import ErrorHandler
+    except ModuleNotFoundError:
+        from error_handler import ErrorHandler
 
     # Update module-level context for system prompt scoping
     _current_apm_id = apm_id
@@ -312,7 +337,10 @@ def _invoke_with_retries(
     # Rebuild agent system prompt with current APM context
     agent = _get_or_create_agent()
 
-    from agentcore.prompts import build_system_prompt
+    try:
+        from agentcore.prompts import build_system_prompt
+    except ModuleNotFoundError:
+        from prompts import build_system_prompt
     agent.system_prompt = build_system_prompt(
         apm_id=apm_id,
         ciclo_actual=_current_ciclo,
@@ -328,7 +356,10 @@ def _invoke_with_retries(
 
             # Build response based on mode
             if mode == "voice":
-                from agentcore.voice_filter import strip_for_voice
+                try:
+                    from agentcore.voice_filter import strip_for_voice
+                except ModuleNotFoundError:
+                    from voice_filter import strip_for_voice
                 clean_text = strip_for_voice(response_text)
                 return {
                     "result": clean_text,

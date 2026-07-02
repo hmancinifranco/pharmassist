@@ -1,0 +1,643 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Create unified agent entry point and config": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040134
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937063988
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937248575
+      }
+    ],
+    "1.2 Implement PharmaToolkit with query_db tool": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040162
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937262637
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937963071
+      }
+    ],
+    "1.5 Implement retry logic for failed SQL": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040192
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937976990
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939325607
+      }
+    ],
+    "1.7 Implement utility tools (buscar_info_publica, generar_brief, obtener_minutas, generar_mensaje_cumpleanos)": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040267
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937977902
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939326466
+      }
+    ],
+    "1.8 Implement system prompt with Aurora DDL and business rules": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040300
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937263145
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937963880
+      }
+    ],
+    "1.9 Implement ResponseFormatter": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040326
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939367635
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940053202
+      }
+    ],
+    "1.11 Implement graceful error handling": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040348
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939368256
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940053806
+      }
+    ],
+    "1.13 Implement voice mode response filtering (Property 8)": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040374
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939369004
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940054542
+      }
+    ],
+    "2. Checkpoint — Agent core unit tests pass locally": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040401
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940071034
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940176158
+      }
+    ],
+    "3.1 Define TypeScript types for AgentResponse": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040426
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937065041
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937250976
+      }
+    ],
+    "3.2 Implement StructuredResponse component": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040461
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937264225
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937965011
+      }
+    ],
+    "3.3 Update ChatPanel to handle structured responses": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040502
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937978598
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939327300
+      }
+    ],
+    "3.4 Update WebSocket client for streaming protocol": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040531
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937979687
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939328533
+      }
+    ],
+    "4. Checkpoint — Frontend renders structured responses with mock data": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040557
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940072488
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940177283
+      }
+    ],
+    "5.1 Create AgentCore Memory resource": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040593
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939370132
+      }
+    ],
+    "5.2 Implement MemoryManager class": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040619
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940183716
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940630946
+      }
+    ],
+    "6.1 Update Lambda proxy for identity validation": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040644
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940184653
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940631479
+      }
+    ],
+    "6.2 Configure AgentCore Identity with Cognito": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040672
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940185731
+      }
+    ],
+    "6.3 Implement APM data isolation in system prompt": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040697
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940186666
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940633151
+      }
+    ],
+    "7.1 Enable traces and metrics for the unified agent": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040723
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940188075
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940634515
+      }
+    ],
+    "7.2 Set up CloudWatch dashboard for GenAI metrics": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040779
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940647363
+      }
+    ],
+    "8. Checkpoint — Platform features configured and agent invokeable locally": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040814
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940650878
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940985039
+      }
+    ],
+    "9.1 Update Lambda proxy for structured response streaming": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040843
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940648200
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940983618
+      }
+    ],
+    "9.2 Update BidiAgent ARN reference": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040879
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940999406
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941351045
+      }
+    ],
+    "10.1 Configure AgentCore runtime for VPC deployment": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040906
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941000262
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941349025
+      }
+    ],
+    "10.2 Configure IAM execution role": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040930
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941001485
+      },
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941349678
+      }
+    ],
+    "10.3 Deploy unified agent to AgentCore": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040956
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941519359
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782942660500
+      }
+    ],
+    "10.4 Update CDK stack IAM roles (if needed)": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937040989
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941520077
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782942661493
+      }
+    ],
+    "11. Checkpoint — Agent deployed and responding in cloud": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041014
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782942669101
+      }
+    ],
+    "12.1 Create evaluation question set (30+ questions)": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041041
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782942670465
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782943546303
+      }
+    ],
+    "12.2 Implement evaluation runner": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041065
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782943552807
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944224069
+      }
+    ],
+    "13.1 Test full flow: frontend → WebSocket → Lambda → Agent → Aurora → response": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041105
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782943554089
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944225139
+      }
+    ],
+    "13.2 Test voice mode end-to-end": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041131
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782943554920
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944225905
+      }
+    ],
+    "13.3 Test error scenarios end-to-end": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041156
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782943556336
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944227112
+      }
+    ],
+    "14. Final checkpoint — Full system operational": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782937041187
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944235025
+      },
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944367356
+      }
+    ],
+    "3. Frontend UX — Structured response components": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782939328580
+      }
+    ],
+    "1. Agent Core — Project structure and toolkit": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940054597
+      }
+    ],
+    "5. AgentCore Memory integration": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940631117
+      }
+    ],
+    "6. AgentCore Identity — JWT validation flow": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782940633201
+      }
+    ],
+    "9. Integration — Lambda proxy and streaming": [
+      {
+        "executionId": "79f99393-4de8-41c5-919f-0c790af6b8b0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782941351081
+      }
+    ],
+    "10. Deployment — AgentCore runtime in VPC": [
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782942661542
+      }
+    ],
+    "12. Evaluation suite": [
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944224230
+      }
+    ],
+    "13. End-to-end integration testing": [
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944227154
+      }
+    ],
+    "7. AgentCore Observability": [
+      {
+        "executionId": "0e0aa5da-fb6f-4dd5-bbef-cbec3d4157e0",
+        "chatSessionId": "sess_dae37692-d278-4f3c-bbc1-8f30c1473719",
+        "timestamp": 1782944395010
+      }
+    ]
+  }
+}

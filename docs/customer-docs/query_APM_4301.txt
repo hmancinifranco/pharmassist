@@ -1,0 +1,73 @@
+DECLARE @APM_ID NVARCHAR(50) = '4301'
+
+;WITH CicloActual AS (
+    SELECT TOP 1 id
+    FROM [apx].[dbo.ciclo]
+    ORDER BY fin DESC
+),
+
+FamiliasFoco AS (
+    SELECT DISTINCT
+        dp.id_familia_producto,
+        cp.nombre_categoria   AS categoria,
+        cp.abreviatura        AS cat_abr
+    FROM      [apx].[dbo.detalle_promocion_producto] dp
+    JOIN      [apx].[dbo.grilla]                     g   ON g.id        = dp.id_grilla
+    JOIN      [apx].[dbo.linea_apm]                  la  ON la.id_linea = g.id_linea
+    JOIN      [apx].[dbo.categoria_promocion]         cp  ON cp.id      = dp.id_categoria_promocion
+    CROSS JOIN CicloActual ca
+    WHERE la.id_apm                      = @APM_ID
+      AND dp.id_ciclo                    = ca.id
+      AND dp.id_categoria_promocion IN ('1', '2')
+),
+
+MarcasFoco AS (
+    SELECT DISTINCT
+        obj.idMarca,
+        obj.idMercado,
+        obj.marcaNombre,
+        cat.grupo_familia,
+        ff.categoria,
+        ff.cat_abr
+    FROM FamiliasFoco ff
+    JOIN [apx].[dbo.catalogo_productos]              cat ON UPPER(cat.grupo_familia) = UPPER(cat.grupo_familia) -- self-filter para traer catálogo
+    JOIN [apx].[dbo.UltimaMillaObjetivoMarcaMercado] obj
+        ON  UPPER(obj.marcaNombre) LIKE UPPER(cat.grupo_familia) + ' %'
+         OR UPPER(obj.marcaNombre) = UPPER(cat.grupo_familia)
+),
+
+MiCartera AS (
+    SELECT
+        cm.doctor_id,
+        d.primerNombre + ' ' + d.primerApellido  AS medico_nombre,
+        d.primerApellido                          AS apellido,
+        esp.nombre                                AS especialidad,
+        ld.nombre                                 AS loyalty_nivel
+    FROM [apx].[dbo.cartera_medica]  cm
+    JOIN [apx].[dbo.doctor]          d   ON d.id    = cm.doctor_id
+    LEFT JOIN [apx].[dbo.especialidad]   esp ON esp.id = d.especialidad_id
+    LEFT JOIN [apx].[dbo.loyalty_doctor] ld  ON ld.id  = d.loyalty_id
+    WHERE cm.apm_id   = @APM_ID
+      AND cm.inactivo = 'False'
+)
+
+SELECT TOP 50
+    mc.apellido                                            AS [Apellido],
+    mc.medico_nombre                                       AS [Médico],
+    mc.especialidad                                        AS [Especialidad],
+    mc.loyalty_nivel                                       AS [Loyalty],
+    mf.cat_abr                                             AS [Cat],
+    mf.categoria                                           AS [Categoría Promo],
+    mf.marcaNombre                                         AS [Marca CUP],
+    ROUND(CAST(umm.[ShareMarcaMes]     AS FLOAT)*100, 1)   AS [Share Marca Mes %],
+    ROUND(CAST(umm.[ShareMarcaMercado] AS FLOAT)*100, 1)   AS [Share en Mercado %],
+    ROUND(CAST(umm.[IEMarcaTrim]       AS FLOAT), 0)       AS [IE Trim Marca],
+    ROUND(CAST(ume.[ShareTrim]         AS FLOAT)*100, 1)   AS [Share Trim Médico %]
+FROM MiCartera mc
+JOIN [apx].[dbo.UltimaMillaMedico]  ume ON ume.idMedicoAPX = mc.doctor_id
+JOIN [apx].[dbo.UltimaMillaMarca]   umm ON umm.idMedicoCUP  = ume.idMedicoCUP
+JOIN MarcasFoco                     mf  ON mf.idMarca       = umm.idMarca
+                                       AND mf.idMercado     = umm.idMercado
+ORDER BY
+    mc.apellido ASC,
+    CASE mf.cat_abr WHEN 'HP' THEN 1 WHEN 'FC' THEN 2 ELSE 3 END

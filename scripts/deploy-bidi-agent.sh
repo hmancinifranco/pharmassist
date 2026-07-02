@@ -16,10 +16,23 @@ set +a
 export AWS_PROFILE="${AWS_PROFILE:-default}"
 AGENTCORE_REGION="${AGENTCORE_REGION:-${AWS_REGION:-us-east-1}}"
 
-if [ -z "${AGENTCORE_AGENT_ARN:-}" ]; then
-  echo "✗ AGENTCORE_AGENT_ARN vacío. Deployá el Text Agent primero (make deploy-text-agent)."
+# Auto-wiring: obtener TEXT_AGENT_ARN desde .env o agentcore status
+TEXT_AGENT_ARN="${AGENTCORE_AGENT_ARN:-}"
+
+if [ -z "$TEXT_AGENT_ARN" ]; then
+  echo "→ AGENTCORE_AGENT_ARN vacío en .env. Intentando obtener via 'agentcore status' en agentcore/..."
+  TEXT_AGENT_ARN=$(cd "$PROJECT_ROOT/agentcore" && agentcore status 2>/dev/null | grep -oE 'arn:aws:bedrock-agentcore:[a-z0-9-]+:[0-9]+:runtime/[a-zA-Z0-9_-]+' | head -1 || true)
+fi
+
+if [ -z "$TEXT_AGENT_ARN" ]; then
+  echo "✗ Text Agent ARN no encontrado."
+  echo "  - AGENTCORE_AGENT_ARN no está en .env"
+  echo "  - 'agentcore status' en agentcore/ no retornó un ARN"
+  echo "  → Deployá el Text Agent primero: make deploy-text-agent"
   exit 1
 fi
+
+echo "→ TEXT_AGENT_ARN: $TEXT_AGENT_ARN"
 
 docker info >/dev/null 2>&1 || (echo "✗ Docker daemon no está corriendo. Abrí Docker Desktop." && exit 1)
 
@@ -41,7 +54,7 @@ agentcore configure -e agent.py -ni -r "$AGENTCORE_REGION" -dt container --name 
 
 echo "→ Deployando BidiAgent..."
 agentcore deploy -auc \
-  -env TEXT_AGENT_ARN="$AGENTCORE_AGENT_ARN" \
+  -env TEXT_AGENT_ARN="$TEXT_AGENT_ARN" \
   -env AWS_REGION="$AWS_REGION" \
   -env BEDROCK_REGION="$AWS_REGION" \
   -env BEDROCK_MODEL_ID=amazon.nova-2-sonic-v1:0

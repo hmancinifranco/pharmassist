@@ -25,13 +25,15 @@ help: ## Mostrar esta ayuda
 	@echo "  1. make check-prereqs         (verifica Docker, CDK, toolkit, AWS CLI)"
 	@echo "  2. make bootstrap             (instala dependencias Python/Node)"
 	@echo "  3. make cdk-bootstrap         (cdk bootstrap la primera vez en la cuenta)"
-	@echo "  4. make deploy-infra          (deploy CDK — primera pasada, sin agent ARN)"
-	@echo "  5. make env-from-outputs      (escribe outputs del stack en .env)"
-	@echo "  6. make seed                  (usuarios Cognito + CSVs → DynamoDB)"
-	@echo "  7. make deploy-text-agent     (deploy Text Agent a AgentCore)"
-	@echo "  8. make deploy-bidi-agent     (deploy BidiAgent de voz)"
-	@echo "  9. make deploy-infra          (segunda pasada — pasa ARNs al Lambda proxy)"
-	@echo " 10. make deploy-frontend       (build + S3 sync + invalidación CloudFront)"
+	@echo "  4. make seed                  (usuarios Cognito + CSVs)"
+	@echo "  5. make deploy-all            (deploy completo: CDK → agents → frontend)"
+	@echo ""
+	@echo "  O paso a paso:"
+	@echo "    make deploy-infra           (CDK stack)"
+	@echo "    make env-from-outputs       (escribe outputs a .env)"
+	@echo "    make deploy-text-agent      (Text Agent a AgentCore)"
+	@echo "    make deploy-bidi-agent      (BidiAgent de voz)"
+	@echo "    make deploy-frontend        (build + S3 + CloudFront)"
 	@echo ""
 	@echo "Para borrar todo: make destroy"
 	@echo ""
@@ -153,6 +155,50 @@ deploy-frontend: ## Build + S3 sync + CloudFront invalidation
 	@bash scripts/deploy-frontend.sh
 
 # ----------------------------------------------------------------------------
+# Deploy completo (orquesta todos los pasos en orden)
+# Dependencias:
+#   deploy-infra      → crea la infra CDK (Cognito, API GW, Lambda, S3, CloudFront)
+#   env-from-outputs  → escribe los outputs del stack a .env (ARNs, URLs, table names)
+#   deploy-text-agent → necesita env vars de .env (tablas, modelo, región)
+#   deploy-bidi-agent → necesita TEXT_AGENT_ARN (obtenido de agentcore status del text agent)
+#   deploy-frontend   → necesita VITE_* vars de .env (Cognito, API URL, WS URL)
+# Si cualquier paso falla, Make detiene la ejecución (comportamiento por defecto).
+# ----------------------------------------------------------------------------
+
+.PHONY: deploy-all
+deploy-all: ## Deploy completo: CDK + env-from-outputs + Text Agent + BidiAgent + Frontend
+	@echo "═══════════════════════════════════════════════════════"
+	@echo "  PharmAssist — Deploy completo (cuenta $$(aws sts get-caller-identity --profile $(AWS_PROFILE) --query Account --output text 2>/dev/null || echo 'unknown'))"
+	@echo "═══════════════════════════════════════════════════════"
+	@echo ""
+	@echo "→ [1/5] Deploying CDK stack..."
+	$(MAKE) deploy-infra
+	@echo ""
+	@echo "→ [2/5] Escribiendo outputs del stack a .env..."
+	$(MAKE) env-from-outputs
+	@echo ""
+	@echo "→ [3/5] Deploying Text Agent a AgentCore..."
+	$(MAKE) deploy-text-agent
+	@echo ""
+	@echo "→ [4/5] Deploying BidiAgent (voz) a AgentCore..."
+	$(MAKE) deploy-bidi-agent
+	@echo ""
+	@echo "→ [5/5] Building + deploying frontend a CloudFront..."
+	$(MAKE) deploy-frontend
+	@echo ""
+	@echo "✓ Deploy completo exitoso."
+	@echo "  → Frontend: $$(grep VITE_API_URL .env | cut -d= -f2 | head -1)"
+	@echo "  → CloudFront: $$(grep CloudFrontDomain .env 2>/dev/null || echo '(ver outputs del stack)')"
+
+# ----------------------------------------------------------------------------
+# E2E tests
+# ----------------------------------------------------------------------------
+
+.PHONY: e2e-test
+e2e-test: ## Ejecutar test E2E con Playwright (requiere deploy completo)
+	@cd e2e && npm install --silent && npx playwright install chromium --with-deps && npx playwright test
+
+# ----------------------------------------------------------------------------
 # Local dev
 # ----------------------------------------------------------------------------
 
@@ -172,11 +218,11 @@ dev-backend: ## Correr el backend localmente (http://localhost:8000)
 destroy: ## Destruir TODO (agents + stack + buckets). Pedirá confirmación.
 	@echo "⚠️  Vas a destruir TODOS los recursos de PharmAssist en la cuenta $$(aws sts get-caller-identity --profile $(AWS_PROFILE) --query Account --output text) región $(AWS_REGION)."
 	@read -p "¿Continuar? (escribí 'destroy' para confirmar): " confirm && [ "$$confirm" = "destroy" ]
-	@echo "→ Destruyendo Text Agent..."
-	@cd agentcore && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
-	@echo "→ Destruyendo BidiAgent..."
+	@echo "→ [1/3] Destruyendo BidiAgent (depende de Text Agent, se destruye primero)..."
 	@cd bidiagent && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
-	@echo "→ Destruyendo CDK stack..."
+	@echo "→ [2/3] Destruyendo Text Agent..."
+	@cd agentcore && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
+	@echo "→ [3/3] Destruyendo CDK stack..."
 	@cd infrastructure && . .venv/bin/activate && cdk destroy $(STACK) --profile $(AWS_PROFILE) --force
 	@echo "→ Limpiando memorias AgentCore huérfanas..."
 	@bash scripts/cleanup-orphan-memories.sh || true

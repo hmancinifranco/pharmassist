@@ -1,0 +1,109 @@
+{
+  "widgets": [
+    {
+      "type": "log",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Request Volume (5min bins)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /agent_e2e_latency_ms/\n| stats count() as request_count by bin(5m)",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Error Rate (errors / total requests per 5min)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/\n| fields @message like /agent_error/ as is_error, @message like /agent_e2e_latency_ms/ as is_request\n| stats sum(is_error) as errors, sum(is_request) as total by bin(5m)\n| display errors / total * 100 as error_rate_pct",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 6,
+      "width": 24,
+      "height": 6,
+      "properties": {
+        "title": "E2E Latency Percentiles (p50, p95, p99)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /agent_e2e_latency_ms/\n| parse @message '\"value\":*,' as latency\n| stats percentile(latency, 50) as p50, percentile(latency, 95) as p95, percentile(latency, 99) as p99 by bin(5m)",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "query_db Duration (p50, p95)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /tool_query_db_latency_ms/\n| parse @message '\"value\":*,' as latency\n| stats percentile(latency, 50) as p50, percentile(latency, 95) as p95 by bin(5m)",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 12,
+      "y": 12,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Memory Retrieval Duration (p50, p95)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /tool_memory_latency_ms/\n| parse @message '\"value\":*,' as latency\n| stats percentile(latency, 50) as p50, percentile(latency, 95) as p95 by bin(5m)",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 0,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "LLM Inference Duration (p50, p95)",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /tool_llm_latency_ms/\n| parse @message '\"value\":*,' as latency\n| stats percentile(latency, 50) as p50, percentile(latency, 95) as p95 by bin(5m)",
+        "view": "timeSeries",
+        "stacked": false,
+        "period": 300
+      }
+    },
+    {
+      "type": "log",
+      "x": 12,
+      "y": 18,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "title": "Retries Distribution",
+        "region": "${AWS_REGION}",
+        "query": "SOURCE '${LOG_GROUP_NAME}' | filter @message like /METRIC/ and @message like /agent_retries/\n| parse @message '\"value\":*,' as retries\n| stats count() as frequency by retries\n| sort retries asc",
+        "view": "bar",
+        "stacked": false,
+        "period": 300
+      }
+    }
+  ]
+}

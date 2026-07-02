@@ -1,0 +1,63 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BedrockModelInvocation",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream"
+      ],
+      "Resource": "arn:aws:bedrock:us-east-1::foundation-model/*"
+    },
+    {
+      "Sid": "DynamoDBMinutasAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:*:table/${MINUTAS_TABLE_NAME}*"
+    },
+    {
+      "Sid": "SecretsManagerDBCredentials",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "${DB_SECRET_ARN}"
+    },
+    {
+      "Sid": "AgentCoreMemoryReadWrite",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateMemoryEvent",
+        "bedrock-agentcore:ListMemoryEvents",
+        "bedrock-agentcore:RetrieveMemoryRecords",
+        "bedrock-agentcore:GetMemory"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:us-east-1:*:memory/*"
+    },
+    {
+      "Sid": "VPCNetworkInterfaceManagement",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface",
+        "ec2:AssignPrivateIpAddresses",
+        "ec2:UnassignPrivateIpAddresses"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogsAndMetrics",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:us-east-1:*:*"
+    }
+  ]
+}

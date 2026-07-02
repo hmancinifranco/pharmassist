@@ -8,3 +8,4 @@ strands-agents
 strands-agents-tools
 ddgs
 lxml
+psycopg2-binary

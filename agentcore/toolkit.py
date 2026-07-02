@@ -28,7 +28,10 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import QueuePool
 from strands import tool
 
-from agentcore.observability import emit_metric, emit_error_metric, timed_operation
+try:
+    from agentcore.observability import emit_metric, emit_error_metric, timed_operation
+except ModuleNotFoundError:
+    from observability import emit_metric, emit_error_metric, timed_operation
 
 logger = logging.getLogger(__name__)
 

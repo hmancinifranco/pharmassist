@@ -69,6 +69,35 @@ Cada spec del roadmap road-to-prod tiene documentación de soporte:
 - `docs/specs-roadmap.md` — tracker central de progreso
 - `docs/session-handoff.md` — estado actual y prompt para retomar
 
+## Deploy obligatorio antes de cerrar un spec
+
+Si el spec incluye infraestructura CDK, AgentCore, o cualquier recurso desplegable:
+
+1. **El deploy es una task del spec** — no se cierra un spec solo con `cdk synth`. El `cdk deploy` (o `agentcore deploy`, o lo que corresponda) es parte de la implementación.
+2. **Troubleshooting incluido** — si el deploy falla, se diagnostica y resuelve antes de cerrar. No se deja al usuario resolver errores de deploy manualmente.
+3. **Verificación post-deploy** — después del deploy exitoso, ejecutar al menos una validación mínima (ej: verificar que los recursos existen, ejecutar una named query, invocar un endpoint).
+
+### Cuándo aplica
+
+- Specs con stacks CDK → `cdk deploy` obligatorio
+- Specs con agentes → `agentcore deploy` obligatorio
+- Specs con Lambda/API → verificar que el endpoint responde
+- Specs que solo producen código local (scripts, docs, tests) → no aplica
+
+### En el `tasks.md`
+
+Todo spec con infraestructura debe incluir una task explícita de deploy antes del checkpoint final:
+
+```
+- [ ] N. Deploy a AWS
+  - Ejecutar `cdk deploy --app '...' --profile $AWS_PROFILE --require-approval never`
+  - Verificar que el deploy completa sin errores
+  - Validar que los recursos nuevos existen (ej: named queries en Athena, tablas en DynamoDB)
+  - Si falla: diagnosticar, corregir, y re-intentar antes de continuar
+```
+
+---
+
 ## Session Handoff (obligatorio al cerrar un spec)
 
 Al completar un spec, hacer dos cosas:
@@ -90,3 +119,36 @@ Sobreescribir con:
 - **Prompt para retomar**: texto copy-paste para arrancar la próxima sesión con contexto
 
 El handoff es efímero — se sobreescribe con cada spec nuevo. Las notas de cierre son permanentes.
+
+### 3. Actualizar `.env` y `.env.example` con outputs del deploy
+
+Si el spec incluyó un `cdk deploy` exitoso:
+- Agregar los CloudFormation Outputs al `.env` como variables (ej: `INGESTION_STATE_MACHINE_ARN=arn:...`)
+- Agregar las mismas variables con valores placeholder al `.env.example`
+- Agregar las variables de input del stack si son nuevas (ej: `RDS_SECRET_ARN`, `LAKE_BUCKET_NAME`)
+- Seguir la convención: sección con comentario `# === {StackName} outputs (from CDK deploy) ===`
+
+Esto asegura que el próximo spec que dependa de estos recursos pueda referenciarlos via `.env` sin buscar en la consola de AWS.
+
+## Persistencia de información entre specs
+
+El `session-handoff.md` se **sobreescribe** con cada spec nuevo — es efímero por diseño. Toda información que deba sobrevivir entre specs va en las **Notas de cierre** del roadmap.
+
+### Qué va en las Notas de cierre (permanente)
+
+- Decisiones de diseño y por qué se tomaron
+- Desvíos del plan original y la causa raíz
+- Gotchas técnicos (errores de deploy, limitaciones de servicios AWS descubiertas)
+- ARNs y nombres de recursos desplegados que otros specs necesitan
+- Variables de entorno nuevas y sus valores/fuentes
+- Workarounds aplicados (ej: "DMS requiere regional principal, no global")
+
+### Qué va en el Session Handoff (efímero)
+
+- Estado actual: qué está desplegado, qué falta
+- Próximo spec: scope, dependencias, bloqueantes
+- Prompt copy-paste para retomar con contexto
+
+### Regla clave
+
+Si un dato es necesario para que el **próximo spec funcione** (un ARN, un nombre de recurso, un gotcha técnico), debe estar en las Notas de cierre del roadmap. El session-handoff puede referenciarlo pero no ser la única fuente.

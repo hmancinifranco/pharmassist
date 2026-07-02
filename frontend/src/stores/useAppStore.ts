@@ -37,6 +37,7 @@ interface AppState {
   // WebSocket
   wsConnected: boolean;
   wsInstance: ChatWebSocket | null;
+  fallbackActive: boolean;
 
   // Loading flags
   visitsLoading: boolean;
@@ -262,7 +263,18 @@ function _handleWSMessage(msg: WSMessage) {
 }
 
 function _handleWSStatusChange(connected: boolean) {
+  console.debug('[PharmAssist] WebSocket status:', connected ? 'connected' : 'disconnected');
   useAppStore.setState({ wsConnected: connected });
+
+  if (connected) {
+    // WS reconnected — deactivate fallback
+    useAppStore.setState({ fallbackActive: false });
+    console.debug('[PharmAssist] WebSocket reconnected, fallback deactivated');
+  } else {
+    // WS disconnected — activate HTTP fallback during reconnection
+    useAppStore.setState({ fallbackActive: true });
+    console.debug('[PharmAssist] WebSocket disconnected, HTTP fallback active');
+  }
 
   // If disconnected mid-stream, append "(respuesta incompleta)"
   if (!connected) {
@@ -302,6 +314,7 @@ const useAppStore = create<AppState>((set, get) => ({
 
   wsConnected: false,
   wsInstance: null,
+  fallbackActive: false,
 
   visitsLoading: false,
   birthdaysLoading: false,
@@ -398,8 +411,11 @@ const useAppStore = create<AppState>((set, get) => ({
 
     // Try WebSocket first
     if (wsInstance && wsConnected) {
-      const sent = wsInstance.send(text, sessionId, apmId);
+      const token = useAuthStore.getState().getIdToken() ?? '';
+      const sent = wsInstance.send(text, sessionId, apmId, token);
       if (sent) {
+        console.debug('[PharmAssist] Message sent via WebSocket');
+        set({ fallbackActive: false });
         // Set timeout for WS response
         _chatTimeoutId = setTimeout(() => {
           const s = useAppStore.getState();
@@ -441,6 +457,8 @@ const useAppStore = create<AppState>((set, get) => ({
     }
 
     // HTTP fallback
+    console.debug('[PharmAssist] WebSocket unavailable, using HTTP fallback');
+    set({ fallbackActive: true });
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('TIMEOUT')), CHAT_TIMEOUT_MS),
     );
@@ -456,6 +474,7 @@ const useAppStore = create<AppState>((set, get) => ({
         content: res.response,
         timestamp: new Date().toISOString(),
         sources: res.sources,
+        structured: res.structured ?? undefined,
       };
       set((s) => ({
         chatMessages: [...s.chatMessages, assistantMsg],

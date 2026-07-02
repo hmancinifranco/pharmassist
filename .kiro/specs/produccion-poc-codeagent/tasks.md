@@ -8,8 +8,8 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
 
 ## Tasks
 
-- [ ] 1. CDK Stack — Skeleton + Entry Point
-  - [ ] 1.1 Crear skeleton del stack `ProduccionPocStack` con VPC, Aurora, Secrets Manager, Security Groups
+- [x] 1. CDK Stack — Skeleton + Entry Point
+  - [x] 1.1 Crear skeleton del stack `ProduccionPocStack` con VPC, Aurora, Secrets Manager, Security Groups
     - Crear `produccion-poc/infrastructure/stacks/produccion_poc_stack.py`
     - Definir VPC con private subnets (2 AZs) + NAT Gateway
     - Crear Aurora PostgreSQL Serverless v2 cluster (0.5–4 ACU, versión 15.4)
@@ -21,12 +21,12 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - CfnOutputs: AuroraEndpoint, AuroraSecretArn, VpcId
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.7, 5.8, 5.6_
 
-  - [ ] 1.2 Crear CDK entry point `produccion-poc/infrastructure/app.py`
+  - [x] 1.2 Crear CDK entry point `produccion-poc/infrastructure/app.py`
     - Instanciar `ProduccionPocStack` con env (account + region desde .env)
     - Configurar `cdk.json` con app command
     - _Requirements: 5.6_
 
-  - [ ] 1.3 Agregar Lambda de seed data al stack
+  - [x] 1.3 Agregar Lambda de seed data al stack
     - Runtime Python 3.12, timeout 15 min, memory 3008 MB
     - VPC access con el Security Group creado
     - Environment: DB_SECRET_ARN, DB_NAME
@@ -34,13 +34,13 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - CfnOutput: SeedLambdaArn
     - _Requirements: 5.5, 5.6_
 
-- [ ] 2. Checkpoint — cdk synth
+- [x] 2. Checkpoint — cdk synth
   - Ejecutar `cdk synth` y verificar que genera template CloudFormation sin errores
   - Validar que los outputs esperados están presentes en el template
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 3. Seed Data Generator — DDL y Generadores
-  - [ ] 3.1 Crear DDL completo (tablas + índices)
+- [x] 3. Seed Data Generator — DDL y Generadores
+  - [x] 3.1 Crear DDL completo (tablas + índices)
     - Crear `produccion-poc/infrastructure/lambda/seed/ddl.sql` con CREATE TABLE de todas las 21+ tablas
     - Incluir FKs, tipos VARCHAR/DECIMAL/BOOLEAN/TIMESTAMP según el design
     - Incluir tablas con comillas para nombres mixtos: `"UltimaMillaMedico"`, `"UltimaMillaMarca"`, `"UltimaMillaObjetivoMarcaMercado"`
@@ -49,19 +49,19 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Incluir creación del usuario read-only `codeagent_readonly`
     - _Requirements: 3.1, 3.2, 3.4, 3.5, 4.8, 4.9, 7.2_
 
-  - [ ] 3.2 Crear generadores de tablas padre (catálogos)
+  - [x] 3.2 Crear generadores de tablas padre (catálogos)
     - Crear `produccion-poc/infrastructure/lambda/seed/generators/catalogos.py`
     - Generar: especialidad (50), loyalty_doctor (5), institucion (500), linea (5), ciclo (12), categoria_promocion (2), grilla (10), familia_producto (40), producto (150)
     - Volúmenes según spec de design
     - _Requirements: 4.6, 4.7_
 
-  - [ ] 3.3 Crear generadores de tablas dependientes (APMs, Doctors, Cartera)
+  - [x] 3.3 Crear generadores de tablas dependientes (APMs, Doctors, Cartera)
     - Crear `produccion-poc/infrastructure/lambda/seed/generators/entities.py`
     - Generar: apm (200), doctor (30,000), linea_apm (300), datos_visita (25,000), cartera_medica (25,000)
     - FKs válidas apuntando a tablas padre ya generadas
     - _Requirements: 4.2, 4.6, 4.7_
 
-  - [ ] 3.4 Crear generador de agenda y agenda_producto
+  - [x] 3.4 Crear generador de agenda y agenda_producto
     - Crear `produccion-poc/infrastructure/lambda/seed/generators/agenda.py`
     - Generar: agenda (150,000), agenda_producto (300,000)
     - Fechas distribuidas en los últimos 12 meses
@@ -69,7 +69,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - ~2 productos por visita en agenda_producto
     - _Requirements: 4.6, 4.7_
 
-  - [ ] 3.5 Crear generador de UltimaMillaMarca (1.5M filas)
+  - [x] 3.5 Crear generador de UltimaMillaMarca (1.5M filas)
     - Crear `produccion-poc/infrastructure/lambda/seed/generators/ultima_milla.py`
     - Generar UltimaMillaMedico (30,000 filas — 1 por doctor)
     - Generar UltimaMillaMarca (~1,500,000 filas — 30K doctors × ~50 marcas)
@@ -81,7 +81,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Generar detalle_promocion_producto (100 filas)
     - _Requirements: 4.1, 4.3, 4.4, 4.5_
 
-  - [ ] 3.6 Crear Lambda handler para seed data
+  - [x] 3.6 Crear Lambda handler para seed data
     - Crear `produccion-poc/infrastructure/lambda/seed/seed_handler.py`
     - Obtener credenciales de Secrets Manager
     - Ejecutar DDL (crear tablas)
@@ -99,13 +99,13 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - **Property 6: IEMarcaTrim Normal Distribution** — μ ∈ [-0.02, 0.02], σ ∈ [0.08, 0.12]
     - **Validates: Requirements 4.2, 4.3, 4.4, 4.5**
 
-- [ ] 4. Checkpoint — Seed Data
+- [x] 4. Checkpoint — Seed Data
   - Verificar que los generadores pueden crear DataFrames con los volúmenes esperados (test local sin BD)
   - Verificar integridad referencial en los DataFrames generados
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. CodeAgent — Toolkit y System Prompt
-  - [ ] 5.1 Crear PharmaToolkit con query_db, get_apm_id, get_ciclo_actual_id
+- [x] 5. CodeAgent — Toolkit y System Prompt
+  - [x] 5.1 Crear PharmaToolkit con query_db, get_apm_id, get_ciclo_actual_id
     - Crear `produccion-poc/agent/toolkit.py`
     - `query_db(sql)`: valida SELECT/WITH, ejecuta con statement_timeout=5000ms, retorna DataFrame
     - `get_apm_id()`: retorna APM_ID de la sesión
@@ -120,7 +120,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - **Property 7: Statement Timeout Enforcement** — statement_timeout=5000 se setea antes de cada query
     - **Validates: Requirements 1.4, 7.1, 8.4, 3.6**
 
-  - [ ] 5.3 Crear SystemPromptBuilder
+  - [x] 5.3 Crear SystemPromptBuilder
     - Crear `produccion-poc/agent/system_prompt.py`
     - Sección 1: Identidad (sos un asistente para APMs de farmacéutica argentina)
     - Sección 2: Schema DDL completo (todas las 21+ tablas con columnas, tipos, FKs)
@@ -134,7 +134,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - **Property 2: System Prompt Contains All Schema Tables** — ∀ tabla en el schema, su nombre aparece en el prompt
     - **Validates: Requirement 2.1**
 
-  - [ ] 5.5 Crear entry point del agente con CodeAgent
+  - [x] 5.5 Crear entry point del agente con CodeAgent
     - Crear `produccion-poc/agent/agent.py`
     - Instanciar BedrockModel (Claude Sonnet 4, us-east-1)
     - Instanciar Toolkit con authorized_imports=[pandas, numpy]
@@ -145,20 +145,20 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Wrapping con BedrockAgentCoreApp para deploy (o standalone)
     - _Requirements: 1.1, 1.2, 1.6, 1.7_
 
-  - [ ] 5.6 Crear archivos de prompts estáticos
+  - [x] 5.6 Crear archivos de prompts estáticos
     - Crear `produccion-poc/agent/prompts/schema.md` — DDL documentado con comentarios
     - Crear `produccion-poc/agent/prompts/business_rules.md` — reglas EVO TRM, Foco, ciclos, CUP
     - Crear `produccion-poc/agent/prompts/query_examples.md` — ≥5 ejemplos SQL para preguntas frecuentes
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6. Checkpoint — Agent Local
+- [x] 6. Checkpoint — Agent Local
   - Verificar que el CodeAgent se instancia correctamente sin errores de import
   - Verificar que SystemPromptBuilder genera un prompt con las 5 secciones
   - Verificar que el prompt contiene las 21+ tablas del schema
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Deploy a AWS
-  - [ ] 7.1 CDK deploy del stack completo
+- [x] 7. Deploy a AWS
+  - [x] 7.1 CDK deploy del stack completo
     - Ejecutar `cdk deploy ProduccionPocStack --profile $AWS_PROFILE --require-approval never`
     - Verificar que Aurora cluster está en estado `available`
     - Verificar que Lambda de seed está creada
@@ -166,14 +166,14 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Si falla: diagnosticar, corregir, y re-intentar
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8_
 
-  - [ ] 7.2 Invocar Lambda de seed data
+  - [x] 7.2 Invocar Lambda de seed data
     - Ejecutar Lambda de seed via AWS CLI (`aws lambda invoke`)
     - Esperar hasta 15 minutos (timeout de la Lambda)
     - Verificar que retorna conteos correctos (UltimaMillaMarca ≈ 1.5M)
     - Si falla por timeout: verificar logs en CloudWatch, ajustar batch sizes
     - _Requirements: 4.1, 4.6, 4.7, 4.8, 4.9_
 
-  - [ ] 7.3 Validación post-seed
+  - [x] 7.3 Validación post-seed
     - Conectar a Aurora y ejecutar queries de validación:
       - `SELECT COUNT(*) FROM "UltimaMillaMarca"` → ≈ 1,500,000
       - `SELECT COUNT(*) FROM cartera_medica WHERE inactivo = false` → ≈ 25,000
@@ -182,15 +182,15 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Verificar que los índices están creados
     - _Requirements: 3.1, 3.4, 3.5, 7.2_
 
-  - [ ] 7.4 Deploy del CodeAgent
+  - [x] 7.4 Deploy del CodeAgent
     - Opción A: `agentcore deploy` con env vars (DB_SECRET_ARN, etc.)
     - Opción B: Lambda + API Gateway como proxy (si strands-code-agent no es compatible con AgentCore)
     - Verificar que el agente responde a una pregunta simple: "¿Cuántos médicos tengo en mi cartera?"
     - Si falla: diagnosticar compatibilidad, ajustar approach
     - _Requirements: 1.1, 1.7_
 
-- [ ] 8. End-to-End Validation
-  - [ ] 8.1 Crear script de smoke test
+- [x] 8. End-to-End Validation
+  - [x] 8.1 Crear script de smoke test
     - Crear `produccion-poc/tests/e2e/run_smoke_test.py`
     - Lista de 14 preguntas del spec (3 categorías)
     - Invocar al agente con cada pregunta + apm_id de test
@@ -199,7 +199,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Generar reporte: passed/failed, latencia promedio, SQL generado
     - _Requirements: 6.1, 6.2, 6.3, 6.7, 6.8_
 
-  - [ ] 8.2 Ejecutar smoke test y validar resultados
+  - [x] 8.2 Ejecutar smoke test y validar resultados
     - Ejecutar `run_smoke_test.py` contra el agente desplegado
     - Verificar: ≥12/14 correctas (≥85%)
     - Verificar: latencia promedio < 6000ms
@@ -208,7 +208,7 @@ Lenguaje de implementación: **Python** (CDK, Lambda, Agent, Tests).
     - Generar reporte final con resultados
     - _Requirements: 6.4, 6.5, 6.6, 8.1_
 
-- [ ] 9. Final checkpoint
+- [x] 9. Final checkpoint
   - Verificar que el POC está desplegado y funcionando end-to-end
   - Verificar que el reporte muestra ≥85% accuracy y <6s latencia promedio
   - Actualizar .env y .env.example con outputs del deploy

@@ -8,3 +8,4 @@ pydantic>=2.0
 python-dotenv
 pandas
 ddgs
+psycopg2-binary

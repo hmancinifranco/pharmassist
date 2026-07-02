@@ -247,6 +247,16 @@ if __name__ == "__main__":
 | `PLANIFICADAS_TABLE_NAME` | Agente, Lambda | CDK output |
 | `MINUTAS_TABLE_NAME` | Agente, Lambda | CDK output |
 | `API_URL` | Scripts, referencia | CDK output (API Gateway URL) |
+| `RDS_SECRET_ARN` | IngestionStack (CDK) | `arn:aws:secretsmanager:us-east-1:ACCOUNT:secret:xxx` |
+| `DATASOURCES_VPC_ID` | IngestionStack (CDK) | `vpc-xxxxxxxxx` |
+| `LAKE_BUCKET_NAME` | IngestionStack (CDK), Glue ETL | `datalakestack-lakebucket9cd7bbd2-xxx` |
+| `GLUE_DB_CRM` | IngestionStack (CDK) | `pharmassist_crm` |
+| `GLUE_DB_CUP` | IngestionStack (CDK) | `pharmassist_cup` |
+| `GLUE_DB_IQVIA` | IngestionStack (CDK) | `pharmassist_iqvia` |
+| `GLUE_DB_MAESTROS` | IngestionStack (CDK) | `pharmassist_maestros` |
+| `INGESTION_STATE_MACHINE_ARN` | Scripts, referencia | CDK output (Step Functions ARN) |
+| `INGESTION_GLUE_JOB_NAME` | Scripts, referencia | `pharmassist-parquet-to-iceberg` |
+| `INGESTION_SCHEDULE_ARN` | Scripts, referencia | CDK output (EventBridge Schedule ARN) |
 
 ## Build para producción
 

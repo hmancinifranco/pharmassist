@@ -1,5 +1,28 @@
 {
   "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "timeout": 100000,
+      "transport": "stdio",
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://aws-mcp.us-east-1.api.aws/mcp"
+        ],
+      "env": {
+        "AWS_PROFILE": "hmancini+demos-Admin",
+        "AWS_REGION": "us-east-1"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "aws___search_documentation",
+        "aws___read_documentation",
+        "aws___retrieve_skill",
+        "aws___recommend",
+        "aws___list_regions",
+        "aws___get_regional_availability",
+        "aws___suggest_aws_commands"
+      ]
+    },
     "markitdown": {
       "command": "npx",
       "args": [

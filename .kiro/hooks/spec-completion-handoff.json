@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Spec Completion Handoff",
+      "description": "Al completar la última task de un spec (postTaskExecution), actualiza automáticamente docs/specs-roadmap.md (status 🟡→🟢, notas de cierre), docs/session-handoff.md (estado actual, próximo spec, prompt para retomar), y .env/.env.example con outputs de deploy. Sigue la metodología definida en .kiro/steering/spec-methodology.md.",
+      "trigger": "PostTaskExec",
+      "action": {
+        "type": "agent",
+        "prompt": "Una task del spec acaba de completarse. Verificá si TODAS las tasks requeridas (no opcionales) del spec están completadas. Si es así, ejecutá el cierre del spec según .kiro/steering/spec-methodology.md:\n\n1. Actualizá docs/specs-roadmap.md: cambiar el status del spec de 🟡 a 🟢, y agregar una entrada en \"Notas de cierre por spec\" con: decisiones tomadas, desvíos del plan, gotchas para specs siguientes, ARNs/nombres de recursos desplegados, variables de entorno nuevas.\n\n2. Actualizá docs/session-handoff.md: sobreescribir con el último spec completado (qué se hizo, recursos AWS, archivos clave, lecciones), próximo spec (scope, dependencias, qué bloquea), y un prompt copy-paste para retomar la próxima sesión con contexto completo.\n\n3. Si el spec incluyó un cdk deploy exitoso: agregar los CloudFormation Outputs al .env como variables, agregar las mismas con placeholders al .env.example, y actualizar steering/deployment.md (tabla de variables) si hay variables nuevas.\n\nRecordá: toda info que el próximo spec necesite (ARNs, gotchas, workarounds) va en las Notas de cierre del roadmap — el session-handoff se pisa y no es fuente permanente.\n\nSi NO todas las tasks están completadas, no hagas nada."
+      },
+      "enabled": true
+    }
+  ]
+}

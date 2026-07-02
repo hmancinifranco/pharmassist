@@ -68,6 +68,7 @@ export interface ChatApiResponse {
   response: string;
   sources: string[];
   session_id: string;
+  structured?: import('../types/agent').StructuredData | null;
 }
 
 export interface AudioUploadResponse {

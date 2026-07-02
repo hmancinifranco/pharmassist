@@ -33,6 +33,8 @@ cdk.out/
 # cdk.context.json contiene AWS account IDs — no publicar
 infrastructure/cdk.context.json
 produccion-poc/infrastructure/cdk.context.json
+# cdk-outputs.json contiene nombres de recursos de la cuenta
+infrastructure/cdk-outputs.json
 
 # === AWS / AgentCore ===
 # .bedrock_agentcore.yaml contiene ARNs con account IDs y paths absolutos locales
@@ -65,3 +67,9 @@ voice-server/
 # === Exportables locales para stakeholders (no se commitean) ===
 docs/*.html
 docs/*.pdf
+
+# === E2E Tests (Playwright) ===
+e2e/node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/screenshots/*.png
