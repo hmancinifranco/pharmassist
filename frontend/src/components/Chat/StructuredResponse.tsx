@@ -25,6 +25,60 @@ interface StructuredResponseProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Column name humanizer — turns raw SQL column keys into friendly headers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Domain-specific overrides for known column names (Spanish, es-AR). */
+const COLUMN_LABELS: Record<string, string> = {
+  id: 'ID',
+  medico_mn: 'Matrícula',
+  primernombre: 'Nombre',
+  primerapellido: 'Apellido',
+  nombre: 'Nombre',
+  apellido: 'Apellido',
+  especialidad: 'Especialidad',
+  especialidad_medica: 'Especialidad',
+  zona: 'Zona',
+  institucion: 'Institución',
+  hospital: 'Hospital',
+  cadencia: 'Cadencia',
+  tipo_visita: 'Tipo de visita',
+  fecha: 'Fecha',
+  fecha_visita: 'Fecha de visita',
+  fecha_planificada: 'Fecha planificada',
+  fecha_ultima_visita: 'Última visita',
+  producto: 'Producto',
+  presentacion: 'Presentación',
+  unidades: 'Unidades',
+  unidades_vendidas: 'Unidades vendidas',
+  valor: 'Valor',
+  total: 'Total',
+  cantidad: 'Cantidad',
+  prescripciones: 'Prescripciones',
+  linea: 'Línea',
+  ciclo: 'Ciclo',
+  dias_vencido: 'Días vencido',
+  apm_id: 'APM',
+};
+
+/** Convert a raw column key into a human-friendly, Title Case Spanish header. */
+function humanizeColumn(col: string): string {
+  const key = col.trim().toLowerCase();
+  if (COLUMN_LABELS[key]) return COLUMN_LABELS[key];
+
+  // Split camelCase and snake_case / kebab into words, then capitalize.
+  const words = col
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // camelCase → camel Case
+    .replace(/[_-]+/g, ' ') // snake_case / kebab → spaces
+    .trim()
+    .split(/\s+/);
+
+  return words
+    .map((w) => (w.length <= 2 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // DataGrid Section
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -33,7 +87,7 @@ function DataGridSection({ table }: { table: TableData }) {
     () =>
       table.columns.map((col) => ({
         field: col,
-        headerName: col,
+        headerName: humanizeColumn(col),
         flex: 1,
         minWidth: 100,
         sortable: true,
