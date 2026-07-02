@@ -122,18 +122,55 @@ function ChartSection({ chart, data }: { chart: ChartData; data: Record<string, 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SQL Toggle Section
+// Data provenance helpers — derive a human-readable summary from the SQL
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Extract the table names referenced in FROM / JOIN clauses. */
+function extractTables(sql: string): string[] {
+  const tables = new Set<string>();
+  const regex = /\b(?:from|join)\s+([a-z_][\w."]*)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(sql)) !== null) {
+    // Strip schema prefix and quotes, keep the bare table name
+    const raw = match[1].replace(/"/g, '').split('.').pop() ?? '';
+    if (raw) tables.add(raw);
+  }
+  return [...tables];
+}
+
+/** Detect the aggregation / operation keywords used in the query. */
+function extractOperations(sql: string): string[] {
+  const ops: string[] = [];
+  const upper = sql.toUpperCase();
+  if (/\bGROUP\s+BY\b/.test(upper)) ops.push('agrupación');
+  if (/\bCOUNT\s*\(/.test(upper)) ops.push('conteo');
+  if (/\bSUM\s*\(/.test(upper)) ops.push('suma');
+  if (/\bAVG\s*\(/.test(upper)) ops.push('promedio');
+  if (/\bMAX\s*\(/.test(upper)) ops.push('máximo');
+  if (/\bMIN\s*\(/.test(upper)) ops.push('mínimo');
+  if (/\bORDER\s+BY\b/.test(upper)) ops.push('ordenamiento');
+  if (/\bJOIN\b/.test(upper)) ops.push('cruce de tablas');
+  return ops;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Data Provenance Section (collapsible "de dónde salió esto")
 // ─────────────────────────────────────────────────────────────────────────────
 
 function SqlSection({
   sql,
+  rowCount,
   show,
   onToggle,
 }: {
   sql: string;
+  rowCount?: number;
   show: boolean;
   onToggle: () => void;
 }) {
+  const tables = useMemo(() => extractTables(sql), [sql]);
+  const operations = useMemo(() => extractOperations(sql), [sql]);
+
   return (
     <Box sx={{ mb: 1 }}>
       <Button
@@ -143,24 +180,71 @@ function SqlSection({
         onClick={onToggle}
         sx={{ textTransform: 'none', fontSize: '0.75rem' }}
       >
-        Ver SQL
+        ¿De dónde salió esto?
       </Button>
       <Collapse in={show}>
         <Box
           sx={{
             mt: 0.5,
             p: 1.5,
-            bgcolor: 'grey.100',
+            bgcolor: 'action.hover',
             borderRadius: 1,
-            fontFamily: 'monospace',
             fontSize: '0.75rem',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            overflow: 'auto',
-            maxHeight: 200,
           }}
         >
-          {sql}
+          {/* Human-readable provenance summary */}
+          <Stack spacing={0.75} sx={{ mb: 1.5 }}>
+            {tables.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Datos consultados en:
+                </Typography>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.25 }}>
+                  {tables.map((t) => (
+                    <Chip key={t} label={t} size="small" variant="outlined" />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {operations.length > 0 && (
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  Operaciones aplicadas:
+                </Typography>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 0.25 }}>
+                  {operations.map((op) => (
+                    <Chip key={op} label={op} size="small" color="primary" variant="outlined" />
+                  ))}
+                </Stack>
+              </Box>
+            )}
+            {typeof rowCount === 'number' && (
+              <Typography variant="caption" color="text.secondary">
+                {rowCount} {rowCount === 1 ? 'registro' : 'registros'} devuelto
+                {rowCount === 1 ? '' : 's'} por la consulta.
+              </Typography>
+            )}
+          </Stack>
+
+          {/* Raw SQL */}
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+            Consulta SQL ejecutada:
+          </Typography>
+          <Box
+            sx={{
+              p: 1.5,
+              bgcolor: 'grey.100',
+              borderRadius: 1,
+              fontFamily: 'monospace',
+              fontSize: '0.72rem',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflow: 'auto',
+              maxHeight: 200,
+            }}
+          >
+            {sql}
+          </Box>
         </Box>
       </Collapse>
     </Box>
@@ -220,9 +304,14 @@ export function StructuredResponse({ structured, onSuggestionClick }: Structured
         <ChartSection chart={structured.chart} data={structured.table.rows} />
       )}
 
-      {/* SQL Toggle */}
+      {/* Data provenance toggle */}
       {structured.sql && (
-        <SqlSection sql={structured.sql} show={showSql} onToggle={() => setShowSql(!showSql)} />
+        <SqlSection
+          sql={structured.sql}
+          rowCount={structured.table?.rows.length}
+          show={showSql}
+          onToggle={() => setShowSql(!showSql)}
+        />
       )}
 
       {/* Suggestions */}

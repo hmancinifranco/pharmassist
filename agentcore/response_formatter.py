@@ -71,8 +71,14 @@ class ResponseFormatter:
         # 2. Clean text (remove markers)
         clean_text = _STRUCTURED_PATTERN.sub("", agent_text).strip()
 
-        # 3. Extract SQL from agent text
-        sql = ResponseFormatter._extract_sql(agent_text)
+        # 3. Extract SQL — prefer the exact executed query captured in the
+        #    STRUCTURED marker (reliable); fall back to regex-scanning the
+        #    agent's prose only if the marker has no sql.
+        sql = None
+        if structured_data and structured_data.get("sql"):
+            sql = structured_data["sql"]
+        if not sql:
+            sql = ResponseFormatter._extract_sql(agent_text)
 
         # 4. Build table (if rows > 2)
         table = ResponseFormatter._build_table(structured_data)

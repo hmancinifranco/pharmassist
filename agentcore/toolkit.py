@@ -259,13 +259,13 @@ class PharmaToolkit:
             rows_returned=len(df),
         )
 
-        return self._format_result(df)
+        return self._format_result(df, validated_sql)
 
     # -----------------------------------------------------------------
     # Output formatting
     # -----------------------------------------------------------------
 
-    def _format_result(self, df: pd.DataFrame) -> str:
+    def _format_result(self, df: pd.DataFrame, sql: str = "") -> str:
         """Format DataFrame as text table + structured JSON metadata.
 
         Text output: Markdown table with max 50 rows.
@@ -273,6 +273,8 @@ class PharmaToolkit:
 
         Args:
             df: pandas DataFrame with query results.
+            sql: The exact validated SQL that was executed (surfaced to the
+                frontend so the user can see the data provenance).
 
         Returns:
             Formatted string: text table + structured metadata suffix.
@@ -306,7 +308,12 @@ class PharmaToolkit:
             "rows": rows_data,
             "total_rows": total_rows,
             "truncated": total_rows > _MAX_STRUCTURED_ROWS,
+            "sql": sql,
         }
+
+        # Capture for the current invocation so agent.py can surface the exact
+        # SQL + data even when the LLM's final text omits the marker.
+        _record_query(structured_metadata)
 
         # Append structured metadata as HTML comment (parsed by ResponseFormatter)
         metadata_json = json.dumps(structured_metadata, ensure_ascii=False, default=str)
@@ -382,6 +389,28 @@ class PharmaToolkit:
 # ---------------------------------------------------------------------------
 
 _toolkit: Optional[PharmaToolkit] = None
+
+# Per-invocation capture of executed queries. The LLM's final text does NOT
+# include the <!--STRUCTURED:--> marker emitted by query_db (that marker lives
+# in the tool result, not the assistant message). We capture the executed SQL
+# and result metadata here so agent.py can surface the exact data provenance
+# (SQL, columns, rows) to the frontend deterministically.
+_captured_queries: list[dict] = []
+
+
+def reset_captured_queries() -> None:
+    """Clear captured queries. Call before each agent invocation."""
+    _captured_queries.clear()
+
+
+def get_captured_queries() -> list[dict]:
+    """Return the queries executed during the current invocation (in order)."""
+    return list(_captured_queries)
+
+
+def _record_query(metadata: dict) -> None:
+    """Record an executed query's structured metadata (called by the toolkit)."""
+    _captured_queries.append(metadata)
 
 
 def _get_toolkit() -> PharmaToolkit:

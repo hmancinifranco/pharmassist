@@ -349,10 +349,30 @@ def _invoke_with_retries(
     current_prompt = prompt
     last_error = None
 
+    try:
+        from agentcore.toolkit import reset_captured_queries, get_captured_queries
+    except ModuleNotFoundError:
+        from toolkit import reset_captured_queries, get_captured_queries
+
     for attempt in range(MAX_RETRIES + 1):
         try:
+            # Clear any queries captured by a previous (failed) attempt so we
+            # only surface the data from the successful run.
+            reset_captured_queries()
+
             response = agent(current_prompt)
             response_text = str(response)
+
+            # The LLM's final text does not include the <!--STRUCTURED:--> marker
+            # emitted by query_db. Re-append the last executed query's marker so
+            # ResponseFormatter can populate structured.sql / table / chart with
+            # the exact data that was queried (deterministic data provenance).
+            captured = get_captured_queries()
+            if captured and "<!--STRUCTURED:" not in response_text:
+                import json as _json
+                last = captured[-1]
+                marker = _json.dumps(last, ensure_ascii=False, default=str)
+                response_text = f"{response_text}\n\n<!--STRUCTURED:{marker}-->"
 
             # Build response based on mode
             if mode == "voice":
