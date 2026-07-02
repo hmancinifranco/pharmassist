@@ -336,8 +336,14 @@ const useAppStore = create<AppState>((set, get) => ({
     get().wsInstance?.disconnect();
 
     const ws = new ChatWebSocket(token, _handleWSMessage, _handleWSStatusChange);
+    // Provide a fresh token on each (re)connect: refresh the Cognito session
+    // so an expired IdToken is renewed instead of looping with a stale token.
+    ws.setTokenProvider(async () => {
+      await useAuthStore.getState().refresh();
+      return useAuthStore.getState().getIdToken();
+    });
     set({ wsInstance: ws });
-    ws.connect();
+    void ws.connect();
   },
 
   disconnectWebSocket: () => {

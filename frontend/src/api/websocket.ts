@@ -81,6 +81,8 @@ export class ChatWebSocket {
   private callbacks: ChatWebSocketCallbacks;
   private legacyHandler: WSMessageHandler | null = null;
   private token: string;
+  private maxReconnectAttempts = 8;
+  private tokenProvider: (() => Promise<string | null>) | null = null;
 
   /**
    * Create a new ChatWebSocket with typed streaming callbacks.
@@ -118,10 +120,30 @@ export class ChatWebSocket {
     }
   }
 
-  connect() {
+  /**
+   * Register a provider that returns a fresh (refreshed) auth token.
+   * Called before each (re)connect so expired tokens are renewed instead
+   * of retrying forever with a stale token.
+   */
+  setTokenProvider(provider: () => Promise<string | null>) {
+    this.tokenProvider = provider;
+  }
+
+  async connect() {
     if (!WS_URL) return;
 
     this.intentionalClose = false;
+
+    // Refresh the token before connecting so we never open with a stale one.
+    if (this.tokenProvider) {
+      try {
+        const fresh = await this.tokenProvider();
+        if (fresh) this.token = fresh;
+      } catch {
+        // Fall back to the existing token if refresh fails.
+      }
+    }
+
     const url = `${WS_URL}?token=${encodeURIComponent(this.token)}`;
     this.ws = new WebSocket(url);
 
@@ -229,9 +251,17 @@ export class ChatWebSocket {
 
   private _tryReconnect() {
     if (this.intentionalClose) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.debug(
+        `[ChatWebSocket] Max reconnect attempts (${this.maxReconnectAttempts}) reached; giving up. HTTP fallback stays active.`,
+      );
+      return;
+    }
     this.reconnectAttempts++;
     const delay = Math.min(this.baseDelay * Math.pow(2, this.reconnectAttempts - 1), this.maxDelay);
     console.debug(`[ChatWebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-    setTimeout(() => this.connect(), delay);
+    setTimeout(() => {
+      void this.connect();
+    }, delay);
   }
 }
