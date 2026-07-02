@@ -76,7 +76,7 @@ class MinutaVisita(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    apm_id: str
+    apm_id: Optional[str] = None
     session_id: Optional[str] = None
 
 

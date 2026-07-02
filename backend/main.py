@@ -71,6 +71,13 @@ _AGENTCORE_AGENT_ARN = os.environ.get("AGENTCORE_AGENT_ARN", "")
 _BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-opus-4-6-v1")
 
 
+def _ensure_session_id(session_id: str) -> str:
+    """Ensure session_id meets AgentCore minimum length (33 chars)."""
+    if len(session_id) < 33:
+        return f"session-{session_id}-{uuid.uuid4()}"
+    return session_id
+
+
 def _generate_text_bedrock(prompt: str) -> str:
     """Generate text using Bedrock invoke_model directly (no agent/tools needed).
 
@@ -110,7 +117,7 @@ def _invoke_agentcore(prompt: str, apm_id: str, session_id: str) -> str:
 
     response = client.invoke_agent_runtime(
         agentRuntimeArn=_AGENTCORE_AGENT_ARN,
-        runtimeSessionId=session_id,
+        runtimeSessionId=_ensure_session_id(session_id),
         payload=payload,
     )
 
@@ -167,7 +174,7 @@ def _invoke_agentcore_full(prompt: str, apm_id: str, session_id: str) -> dict:
 
     response = client.invoke_agent_runtime(
         agentRuntimeArn=_AGENTCORE_AGENT_ARN,
-        runtimeSessionId=session_id,
+        runtimeSessionId=_ensure_session_id(session_id),
         payload=payload,
     )
 
