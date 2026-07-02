@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import re
 import time
 import urllib.request
 
@@ -215,9 +216,16 @@ def _handle_message(event, connection_id, domain, stage):
             "session_id": session_id,
         }).encode("utf-8")
 
+        # AgentCore requires runtimeSessionId >= 33 chars matching
+        # [0-9a-zA-Z._:-]+. connectionId (~20 chars) may contain '=' padding,
+        # so sanitize invalid chars and right-pad to 33.
+        runtime_session_id = re.sub(r"[^0-9a-zA-Z._:-]", "0", session_id)
+        if len(runtime_session_id) < 33:
+            runtime_session_id = runtime_session_id + "0" * (33 - len(runtime_session_id))
+
         response = agentcore_client.invoke_agent_runtime(
             agentRuntimeArn=AGENTCORE_ARN,
-            runtimeSessionId=session_id,
+            runtimeSessionId=runtime_session_id,
             payload=payload,
         )
 
