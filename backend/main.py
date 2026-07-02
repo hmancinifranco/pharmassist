@@ -5,6 +5,16 @@ Provides REST endpoints for the dashboard cards, chat, audio transcription,
 and minuta management. All endpoints filter by apm_id for data isolation.
 """
 
+# Load .env BEFORE any os.environ reads — supports root .env and backend/.env
+from pathlib import Path
+from dotenv import load_dotenv
+
+_env_file = Path(__file__).resolve().parent.parent / ".env"
+if _env_file.exists():
+    load_dotenv(_env_file)
+else:
+    load_dotenv()  # fallback: search up from cwd
+
 import json as json_mod
 import logging
 import os
@@ -21,16 +31,21 @@ from boto3.dynamodb.conditions import Key
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 try:
     from backend.agents.assistant import chat as agent_chat
     from backend.models.schemas import ChatRequest, ChatResponse, Medico
     from backend.utils.birthday_utils import filtrar_cumpleanos_proximos
     from backend.utils.sla_utils import obtener_alertas_sla
+    from backend.db import get_connection
 except ImportError:
     from agents.assistant import chat as agent_chat  # type: ignore[no-redef]
     from models.schemas import ChatRequest, ChatResponse, Medico  # type: ignore[no-redef]
     from utils.birthday_utils import filtrar_cumpleanos_proximos  # type: ignore[no-redef]
     from utils.sla_utils import obtener_alertas_sla  # type: ignore[no-redef]
+    from db import get_connection  # type: ignore[no-redef]
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +137,63 @@ def _invoke_agentcore(prompt: str, apm_id: str, session_id: str) -> str:
             return data.decode("utf-8", errors="replace")
 
     return ""
+
+def _invoke_agentcore_full(prompt: str, apm_id: str, session_id: str) -> dict:
+    """Invoke AgentCore and return the FULL response dict including structured data.
+
+    Unlike _invoke_agentcore (which returns only a string), this returns the
+    complete JSON payload: {result, structured, success, retries}.
+    """
+    client = boto3.client(
+        "bedrock-agentcore",
+        region_name=os.environ.get("AGENTCORE_REGION", _REGION),
+    )
+
+    payload = json_mod.dumps({"prompt": prompt, "apm_id": apm_id}).encode()
+
+    response = client.invoke_agent_runtime(
+        agentRuntimeArn=_AGENTCORE_AGENT_ARN,
+        runtimeSessionId=session_id,
+        payload=payload,
+    )
+
+    content_type = response.get("contentType", "")
+
+    # Collect raw body bytes from response stream
+    raw_parts: list[str] = []
+
+    if "text/event-stream" in content_type:
+        for line in response["response"].iter_lines(chunk_size=10):
+            if line:
+                decoded = line.decode("utf-8") if isinstance(line, bytes) else line
+                if decoded.startswith("data: "):
+                    raw_parts.append(decoded[6:])
+                else:
+                    raw_parts.append(decoded)
+    elif content_type == "application/json":
+        for chunk in response.get("response", []):
+            raw_parts.append(
+                chunk.decode("utf-8") if isinstance(chunk, bytes) else chunk
+            )
+    else:
+        raw = response.get("response")
+        if raw:
+            for c in raw:
+                raw_parts.append(
+                    c.decode("utf-8") if isinstance(c, bytes) else c
+                )
+
+    body_str = "".join(raw_parts)
+
+    # Try to parse as JSON
+    try:
+        body = json_mod.loads(body_str)
+        if isinstance(body, dict) and "result" in body:
+            return body  # {result, structured, success, retries}
+        return {"result": str(body), "structured": None, "success": True, "retries": 0}
+    except (json_mod.JSONDecodeError, ValueError):
+        return {"result": body_str, "structured": None, "success": True, "retries": 0}
+
 
 # ---------------------------------------------------------------------------
 # App & middleware
@@ -256,12 +328,13 @@ async def health():
 # ---------------------------------------------------------------------------
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.post("/api/chat")
 async def chat_endpoint(req: ChatRequest, request: Request):
-    """Send a message to the Strands agent and return the response.
+    """Send a message to the agent and return the response.
 
-    Always uses the local Strands agent (which has all tools and DynamoDB access).
-    AgentCore is available as a standalone endpoint for direct invocation.
+    When AGENTCORE_AGENT_ARN is set, proxies to the deployed AgentCore unified
+    agent (CodeAgent with query_db). Otherwise falls back to the local Strands
+    agent (old DynamoDB-based).
     """
     try:
         session_id = req.session_id or str(uuid.uuid4())
@@ -269,17 +342,29 @@ async def chat_endpoint(req: ChatRequest, request: Request):
         # Prefer JWT claim for apm_id; fall back to request body for local dev
         apm_id = _get_apm_id_from_jwt(request) or req.apm_id
 
-        response_text = agent_chat(
-            message=req.message,
-            apm_id=apm_id,
-            session_id=session_id,
-        )
-
-        return ChatResponse(
-            response=response_text,
-            sources=[],
-            session_id=session_id,
-        )
+        if _AGENTCORE_AGENT_ARN:
+            # Proxy to unified AgentCore agent (new CodeAgent with query_db)
+            result = _invoke_agentcore_full(
+                prompt=req.message, apm_id=apm_id, session_id=session_id
+            )
+            return ChatResponse(
+                response=result.get("result", ""),
+                sources=[],
+                session_id=session_id,
+                structured=result.get("structured"),
+            )
+        else:
+            # Fallback to local Strands agent (old DynamoDB-based)
+            response_text = agent_chat(
+                message=req.message,
+                apm_id=apm_id,
+                session_id=session_id,
+            )
+            return ChatResponse(
+                response=response_text,
+                sources=[],
+                session_id=session_id,
+            )
     except Exception as e:
         logger.error(f"Error en /api/chat: {e}")
         # Detect Bedrock / model invocation failures
@@ -305,61 +390,111 @@ async def chat_endpoint(req: ChatRequest, request: Request):
 
 @app.get("/api/dashboard/visits-today")
 async def visits_today(apm_id: str = Depends(_resolve_apm_id)):
-    """Return planned visits for the current month, enriched with médico data."""
+    """Return planned visits for the current month, enriched with médico data.
+
+    Queries Aurora PostgreSQL (agenda + doctor + especialidad tables).
+    Falls back to empty list if DB_SECRET_ARN is not configured (local dev).
+    """
+    # Graceful fallback: if Aurora is not configured, return empty
+    if not os.environ.get("DB_SECRET_ARN"):
+        logger.info("DB_SECRET_ARN not set — visits-today returning empty (local dev mode)")
+        return {"visits": []}
+
+    try:
+        from db import get_connection
+        from psycopg2.extras import RealDictCursor
+    except ImportError:
+        from backend.db import get_connection
+        from psycopg2.extras import RealDictCursor
+
     try:
         hoy = date.today()
         # Query the full current month so the dashboard always has data for demos
-        fecha_desde = hoy.replace(day=1).isoformat()
-        # Last day of month
+        fecha_desde = hoy.replace(day=1)
         if hoy.month == 12:
-            fecha_hasta = hoy.replace(year=hoy.year + 1, month=1, day=1).isoformat()
+            fecha_hasta = hoy.replace(year=hoy.year + 1, month=1, day=1)
         else:
-            fecha_hasta = hoy.replace(month=hoy.month + 1, day=1).isoformat()
+            fecha_hasta = hoy.replace(month=hoy.month + 1, day=1)
 
-        db = _dynamodb()
-        planificadas = db.Table(_PLANIFICADAS_TABLE)
-        medicos_table = db.Table(_MEDICOS_TABLE)
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        a.id AS agenda_id,
+                        a.inicio,
+                        a.visita_tipo,
+                        a.visita_exitosa,
+                        a.observaciones,
+                        a.apm_id,
+                        d.id AS doctor_id,
+                        d."primerNombre" AS doctor_nombre,
+                        d."primerApellido" AS doctor_apellido,
+                        d."matriculaNacional" AS medico_mn,
+                        e.nombre AS especialidad
+                    FROM agenda a
+                    JOIN doctor d ON a.doctor_id = d.id
+                    LEFT JOIN especialidad e ON d.especialidad_id = e.id
+                    WHERE a.apm_id = %s
+                      AND a.inicio >= %s
+                      AND a.inicio < %s
+                      AND a.inactivo = false
+                    ORDER BY a.inicio ASC
+                """, (apm_id, fecha_desde, fecha_hasta))
+                rows = cur.fetchall()
 
-        response = planificadas.query(
-            IndexName="APM-Fecha-index",
-            KeyConditionExpression=(
-                Key("APM").eq(apm_id)
-                & Key("Fecha_Planificada").between(fecha_desde, fecha_hasta)
-            ),
-        )
-        items = response.get("Items", [])
-
+        # Transform Aurora rows to the frontend contract (VisitaPlanificada[])
         enriched: list[dict] = []
-        for item in items:
-            visit = _serialize(item)
-            mn = item.get("Medico_MN")
-            if mn is not None:
-                try:
-                    med_resp = medicos_table.get_item(Key={"Medico_MN": mn})
-                    medico = med_resp.get("Item")
-                    if medico:
-                        visit["Medico_Nombre"] = medico.get("Nombre", "")
-                        visit["Medico_Apellido"] = medico.get("Apellido", "")
-                        visit["Especialidad_Medica"] = medico.get("Especialidad_Medica", "")
-                        visit["Calle"] = medico.get("Calle", "")
-                        visit["Altura"] = medico.get("Altura", "")
-                        visit["Barrio"] = medico.get("Barrio", "")
-                        visit["Latitud"] = (
-                            float(medico["Latitud"])
-                            if isinstance(medico.get("Latitud"), Decimal)
-                            else medico.get("Latitud")
-                        )
-                        visit["Longitud"] = (
-                            float(medico["Longitud"])
-                            if isinstance(medico.get("Longitud"), Decimal)
-                            else medico.get("Longitud")
-                        )
-                except Exception as med_err:
-                    logger.warning(f"No se pudo enriquecer médico MN {mn}: {med_err}")
+        for row in rows:
+            inicio = row.get("inicio")
+            fecha_str = inicio.strftime("%Y-%m-%d") if inicio else ""
+
+            # Map visita_exitosa boolean to Estado string
+            visita_exitosa = row.get("visita_exitosa")
+            if visita_exitosa is True:
+                estado = "Completada"
+            elif visita_exitosa is False:
+                estado = "Pendiente"
+            else:
+                estado = "Pendiente"
+
+            # Parse matriculaNacional to int (fallback to 0)
+            mn_raw = row.get("medico_mn", "")
+            try:
+                medico_mn = int(mn_raw) if mn_raw else 0
+            except (ValueError, TypeError):
+                medico_mn = 0
+
+            visit: dict = {
+                "APM": row.get("apm_id", ""),
+                "Medico_MN": medico_mn,
+                "Fecha_Planificada": fecha_str,
+                "Zona": "",  # Aurora agenda doesn't have zona; empty for now
+                "Tipo_Visita": row.get("visita_tipo", "Presencial") or "Presencial",
+                "Productos_Sugeridos": "",  # Not available in agenda table
+                "Estado": estado,
+                "Medico_Nombre": row.get("doctor_nombre", ""),
+                "Medico_Apellido": row.get("doctor_apellido", ""),
+                "Especialidad_Medica": row.get("especialidad", ""),
+            }
             enriched.append(visit)
 
         return {"visits": enriched}
+
+    except ImportError as e:
+        logger.error(f"psycopg2 not installed: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio temporalmente no disponible",
+        )
     except Exception as e:
+        # Catch psycopg2 connection errors → 503 generic
+        import psycopg2 as _pg2
+        if isinstance(e, (_pg2.OperationalError, _pg2.InterfaceError)):
+            logger.error(f"Aurora connection error in visits-today: {e}")
+            raise HTTPException(
+                status_code=503,
+                detail="Servicio temporalmente no disponible",
+            )
         logger.error(f"Error en /api/dashboard/visits-today: {e}")
         raise HTTPException(
             status_code=500,
@@ -410,25 +545,62 @@ async def complete_visit(body: dict, request: Request):
 
 @app.get("/api/dashboard/birthdays")
 async def birthdays(apm_id: str = Depends(_resolve_apm_id)):
-    """Return upcoming birthdays (30 days) — no message generation, fast."""
+    """Return upcoming birthdays (30 days) — queries Aurora PostgreSQL.
+
+    Joins doctor with cartera_medica to get only doctors assigned to this APM.
+    Gracefully returns [] if fecha_nacimiento column doesn't exist in Aurora.
+    """
+    # Graceful degradation: if DB_SECRET_ARN not set, return empty list
+    if not os.environ.get("DB_SECRET_ARN"):
+        return {"birthdays": []}
+
     try:
-        db = _dynamodb()
-        medicos_table = db.Table(_MEDICOS_TABLE)
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # Check if fecha_nacimiento column exists in doctor table
+                cur.execute("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_name = 'doctor' AND column_name = 'fecha_nacimiento'
+                """)
+                if not cur.fetchone():
+                    # Column doesn't exist in this Aurora schema — return empty
+                    return {"birthdays": []}
 
-        response = medicos_table.query(
-            IndexName="APM-index",
-            KeyConditionExpression=Key("APM").eq(apm_id),
-        )
-        items = response.get("Items", [])
+                # Query doctors assigned to this APM with birthdays
+                cur.execute("""
+                    SELECT d.id AS doctor_id,
+                           d."primerNombre" AS nombre,
+                           d."primerApellido" AS apellido,
+                           d.fecha_nacimiento
+                    FROM doctor d
+                    JOIN cartera_medica cm ON cm.doctor_id = d.id
+                    WHERE cm.apm_id = %s
+                      AND cm.inactivo = false
+                      AND d.inactivo = false
+                      AND d.fecha_nacimiento IS NOT NULL
+                """, (apm_id,))
+                rows = cur.fetchall()
 
-        medicos = [_dynamo_item_to_medico(it) for it in items]
+        # Build Medico objects for reuse with existing birthday utility
+        medicos: list[Medico] = []
+        for row in rows:
+            medicos.append(Medico(
+                medico_mn=row["doctor_id"],
+                nombre=row["nombre"] or "",
+                apellido=row["apellido"] or "",
+                especialidad_medica="",
+                zona="",
+                apm=apm_id,
+                cadencia="",
+                fecha_nacimiento=row["fecha_nacimiento"],
+            ))
+
         cumples = filtrar_cumpleanos_proximos(medicos)
 
         results: list[dict] = []
         for entry in cumples:
             medico: Medico = entry["medico"]
             dias_hasta: int = entry["dias_hasta"]
-
             results.append({
                 "medico": {
                     "medico_mn": medico.medico_mn,
@@ -449,6 +621,18 @@ async def birthdays(apm_id: str = Depends(_resolve_apm_id)):
             })
 
         return {"birthdays": results}
+    except psycopg2.OperationalError as e:
+        logger.error(f"Aurora connection error in birthdays: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio temporalmente no disponible",
+        )
+    except psycopg2.InterfaceError as e:
+        logger.error(f"Aurora interface error in birthdays: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio temporalmente no disponible",
+        )
     except Exception as e:
         logger.error(f"Error en /api/dashboard/birthdays: {e}")
         raise HTTPException(
@@ -533,34 +717,99 @@ async def generate_birthday_message(body: dict, request: Request):
 
 @app.get("/api/dashboard/sla-alerts")
 async def sla_alerts(apm_id: str = Depends(_resolve_apm_id)):
-    """Return SLA breach alerts for the APM's médicos."""
+    """Return SLA breach alerts — queries Aurora PostgreSQL.
+
+    Joins cartera_medica + doctor + datos_visita (cadence) + agenda (last visit).
+    Calculates days overdue based on cadence: Mensual=30, Trimestral=90, Semestral=180, Anual=365.
+    Only returns doctors where days_overdue > 0.
+    """
+    # Graceful degradation: if DB_SECRET_ARN not set, return empty list
+    if not os.environ.get("DB_SECRET_ARN"):
+        return {"alerts": []}
+
     try:
-        db = _dynamodb()
-        medicos_table = db.Table(_MEDICOS_TABLE)
+        with get_connection() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT
+                        d.id AS doctor_id,
+                        d."primerNombre" AS nombre,
+                        d."primerApellido" AS apellido,
+                        dv.frecuencia AS cadencia,
+                        (
+                            SELECT MAX(ag.inicio)
+                            FROM agenda ag
+                            WHERE ag.apm_id = cm.apm_id
+                              AND ag.doctor_id = cm.doctor_id
+                              AND ag.inactivo = false
+                        ) AS fecha_ultima_visita
+                    FROM cartera_medica cm
+                    JOIN doctor d ON d.id = cm.doctor_id
+                    JOIN datos_visita dv ON dv.id = cm.datos_visita_id
+                    WHERE cm.apm_id = %s
+                      AND cm.inactivo = false
+                      AND d.inactivo = false
+                """, (apm_id,))
+                rows = cur.fetchall()
 
-        response = medicos_table.query(
-            IndexName="APM-index",
-            KeyConditionExpression=Key("APM").eq(apm_id),
-        )
-        items = response.get("Items", [])
+        # Cadence mapping (days)
+        cadencia_dias = {
+            "Mensual": 30,
+            "Trimestral": 90,
+            "Semestral": 180,
+            "Anual": 365,
+        }
 
-        medicos = [_dynamo_item_to_medico(it) for it in items]
-        alertas = obtener_alertas_sla(medicos)
-
+        hoy = date.today()
         results: list[dict] = []
-        for alerta in alertas:
-            medico: Medico = alerta["medico"]
-            results.append({
-                "medico_mn": medico.medico_mn,
-                "nombre": f"{medico.nombre} {medico.apellido}",
-                "especialidad": medico.especialidad_medica,
-                "cadencia": alerta["cadencia"],
-                "fecha_ultima_visita": alerta["fecha_ultima_visita"],
-                "dias_vencido": alerta["dias_vencido"],
-                "zona": medico.zona,
-            })
+
+        for row in rows:
+            cadencia = row["cadencia"] or ""
+            intervalo = cadencia_dias.get(cadencia)
+            if intervalo is None:
+                # Unknown cadence — skip
+                continue
+
+            fecha_ultima = row["fecha_ultima_visita"]
+            if fecha_ultima is None:
+                # Never visited — mark as overdue by full interval + 1
+                dias_vencido = intervalo + 1
+            else:
+                # fecha_ultima may be a datetime; extract date
+                if hasattr(fecha_ultima, "date"):
+                    fecha_ultima = fecha_ultima.date()
+                dias_desde_visita = (hoy - fecha_ultima).days
+                dias_vencido = dias_desde_visita - intervalo
+
+            if dias_vencido > 0:
+                results.append({
+                    "medico_mn": row["doctor_id"],
+                    "nombre": f"{row['nombre'] or ''} {row['apellido'] or ''}".strip(),
+                    "especialidad": "",
+                    "cadencia": cadencia,
+                    "fecha_ultima_visita": (
+                        fecha_ultima.isoformat() if fecha_ultima else None
+                    ),
+                    "dias_vencido": dias_vencido,
+                    "zona": "",
+                })
+
+        # Sort by days overdue descending (most urgent first)
+        results.sort(key=lambda a: a["dias_vencido"], reverse=True)
 
         return {"alerts": results}
+    except psycopg2.OperationalError as e:
+        logger.error(f"Aurora connection error in sla-alerts: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio temporalmente no disponible",
+        )
+    except psycopg2.InterfaceError as e:
+        logger.error(f"Aurora interface error in sla-alerts: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Servicio temporalmente no disponible",
+        )
     except Exception as e:
         logger.error(f"Error en /api/dashboard/sla-alerts: {e}")
         raise HTTPException(
