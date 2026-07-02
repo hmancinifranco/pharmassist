@@ -1,11 +1,7 @@
+# Lambda proxy dependencies (keep lean — target <50 MB unzipped)
+# boto3/botocore are pre-installed in Lambda Python 3.12 runtime
 fastapi
 mangum
 pydantic>=2.0
 python-dotenv
-pandas
-boto3
-strands-agents
-strands-agents-tools
-ddgs
-lxml
 psycopg2-binary

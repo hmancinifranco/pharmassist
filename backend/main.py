@@ -35,17 +35,31 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 try:
-    from backend.agents.assistant import chat as agent_chat
     from backend.models.schemas import ChatRequest, ChatResponse, Medico
     from backend.utils.birthday_utils import filtrar_cumpleanos_proximos
     from backend.utils.sla_utils import obtener_alertas_sla
     from backend.db import get_connection
 except ImportError:
-    from agents.assistant import chat as agent_chat  # type: ignore[no-redef]
     from models.schemas import ChatRequest, ChatResponse, Medico  # type: ignore[no-redef]
     from utils.birthday_utils import filtrar_cumpleanos_proximos  # type: ignore[no-redef]
     from utils.sla_utils import obtener_alertas_sla  # type: ignore[no-redef]
     from db import get_connection  # type: ignore[no-redef]
+
+# Lazy import: local Strands agent only needed when AGENTCORE_AGENT_ARN is NOT set
+# This avoids requiring strands-agents in the Lambda bundle (saves ~300 MB)
+_agent_chat = None
+
+
+def _get_local_agent_chat():
+    """Lazy-load the local Strands agent (fallback when AgentCore is unavailable)."""
+    global _agent_chat
+    if _agent_chat is None:
+        try:
+            from backend.agents.assistant import chat as _chat
+        except ImportError:
+            from agents.assistant import chat as _chat  # type: ignore[no-redef]
+        _agent_chat = _chat
+    return _agent_chat
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +369,7 @@ async def chat_endpoint(req: ChatRequest, request: Request):
             )
         else:
             # Fallback to local Strands agent (old DynamoDB-based)
+            agent_chat = _get_local_agent_chat()
             response_text = agent_chat(
                 message=req.message,
                 apm_id=apm_id,
