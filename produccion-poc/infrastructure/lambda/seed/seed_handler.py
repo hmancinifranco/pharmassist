@@ -13,6 +13,7 @@ Environment variables:
 
 import json
 import os
+import re
 import secrets
 import time
 import ssl
@@ -168,7 +169,11 @@ def _execute_ddl_indexes_and_grants(conn) -> None:
     # archivo sea versionable. Se reemplaza acá por uno aleatorio: nadie necesita
     # conocerlo (el agente entra con las credenciales del secret de Aurora), así
     # que no hace falta persistirlo.
+    # token_urlsafe genera solo [A-Za-z0-9_-], así que es seguro interpolarlo en el
+    # DDL: PostgreSQL no acepta bind params en CREATE/ALTER USER. Se valida igual.
     random_password = secrets.token_urlsafe(32)
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", random_password):
+        raise RuntimeError("El password generado contiene caracteres inesperados.")
     sql_text = sql_text.replace("readonly_password_placeholder", random_password)
 
     statements = [s.strip() for s in sql_text.split(";") if s.strip()]
@@ -185,6 +190,15 @@ def _execute_ddl_indexes_and_grants(conn) -> None:
             print(f"[IDX] OK: {safe_preview}")
         except Exception as e:
             print(f"[IDX] Warning: {e}")
+
+    # En un re-seed el CREATE USER de arriba falla porque el rol ya existe, así que
+    # el password no rotaría. El ALTER garantiza que siempre quede el aleatorio.
+    try:
+        cursor.execute(f"ALTER USER codeagent_readonly WITH PASSWORD '{random_password}';")
+        print("[IDX] OK: ALTER USER codeagent_readonly (password rotado)")
+    except Exception as e:
+        print(f"[IDX] Warning al rotar el password de codeagent_readonly: {e}")
+
     cursor.close()
     print("[IDX] Indexes and grants executed.")
 
@@ -712,6 +726,25 @@ def handler(event, context):
             return {
                 "statusCode": 200,
                 "body": json.dumps(result),
+            }
+
+        if action == "grants":
+            # --- GRANTS mode ---
+            # Reaplica índices y grants y rota el password del rol read-only,
+            # sin regenerar los datos. Útil para rotar la credencial sin el
+            # costo de un seed completo.
+            print("[HANDLER] Reaplicando índices y grants (sin regenerar datos)...")
+            _execute_ddl_indexes_and_grants(conn)
+            conn.close()
+            total_elapsed = time.time() - total_start
+            print(f"[HANDLER] GRANTS COMPLETE in {total_elapsed:.1f}s")
+            return {
+                "statusCode": 200,
+                "body": json.dumps({
+                    "status": "success",
+                    "action": "grants",
+                    "total_time_seconds": round(total_elapsed, 1),
+                }),
             }
 
         # --- SEED mode (default) ---

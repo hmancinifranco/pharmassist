@@ -203,7 +203,7 @@ Valores configurados en `seed_handler.py`:
 | `linea_apm` | ~300 |
 | `doctor` | 30.000 |
 | `datos_visita` | 25.000 |
-| `cartera_medica` | 25.000 |
+| `cartera_medica` | 25.000 (~23.700 activas) |
 | `agenda` | 150.000 |
 | `agenda_producto` | 300.000 |
 | `"UltimaMillaMedico"` | 30.000 (1 por médico) |

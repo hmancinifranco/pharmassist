@@ -593,6 +593,14 @@ cdk destroy PharmAssistStack --profile $AWS_PROFILE --force
 - **Modo voz no conecta** → Verifica que `VITE_IDENTITY_POOL_ID` y `VITE_BIDIAGENT_AGENT_ARN` estén en `.env`. El Identity Pool debe tener el User Pool como proveedor y el rol autenticado debe tener `bedrock-agentcore:InvokeAgentRuntimeWithWebSocketStream`.
 - **Frontend muestra "undefined" en URLs** → El build de Vite no leyó `.env`. Asegúrate que `frontend/.env` existe (el Makefile hace el symlink automático).
 - **Web search (DDGS) falla** → Puede ser rate-limit temporal. El brief se genera igual con datos del CRM.
+- **Rotar la credencial del rol read-only sin regenerar los datos** → la Lambda de seed acepta `{"action": "grants"}`, que reaplica índices y grants y rota el password de `codeagent_readonly` en menos de 1 s:
+  ```bash
+  source .env
+  aws lambda invoke --function-name $POC_SEED_LAMBDA_ARN \
+    --cli-binary-format raw-in-base64-out --payload '{"action":"grants"}' \
+    --profile $AWS_PROFILE /tmp/out.json && cat /tmp/out.json
+  ```
+  También acepta `{"action": "validate"}` para verificar conteos, índices y el rol sin modificar nada.
 - **`agentcore destroy` preserva la memoria** → El CLI marca como "pre-existing" a memorias que detecta al deployar. El target `make destroy` ejecuta `scripts/cleanup-orphan-memories.sh` al final para limpiarlas.
 - **Buckets `bedrock-agentcore-codebuild-sources-<account>-<region>`** → Son compartidos por todos los agentes de esa cuenta. `make destroy` NO los borra para no romper otros deploys. Si quieres borrarlos, hazlo manual con `aws s3 rb s3://<bucket> --force`.
 
