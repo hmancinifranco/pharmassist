@@ -560,6 +560,16 @@ El conocimiento semántico que el DDL no expresa (los 5 caminos de JOIN, las 10 
 | [`docs/session-handoff.md`](docs/session-handoff.md) | Estado actual del despliegue y prompt para retomar el trabajo |
 | [`produccion-poc/README.md`](produccion-poc/README.md) | El POC que validó el CodeAgent contra el modelo de datos completo |
 
+### Exportables para stakeholders
+
+`docs/road-to-prod.md` tiene un render HTML con estilo de presentación (diagramas Mermaid incluidos) para compartir con audiencias no técnicas:
+
+```bash
+make docs-html      # requiere pandoc: brew install pandoc
+```
+
+Genera `docs/road-to-prod.html` desde el Markdown usando `docs/road-to-prod.template.html`. Los `.html` son artefactos derivados y están en `.gitignore`; el template sí se versiona. **Regenerá el HTML después de editar el Markdown** para que no queden desincronizados.
+
 ---
 
 ## Destruir todo
@@ -568,14 +578,34 @@ El conocimiento semántico que el DDL no expresa (los 5 caminos de JOIN, las 10 
 make destroy
 ```
 
-O manualmente:
+Pide confirmación escribiendo `destroy` y corre 4 pasos en orden, más la limpieza de memorias AgentCore huérfanas.
+
+O manualmente, **en este orden** (el BidiAgent depende del Text Agent, así que va primero):
 
 ```bash
-cd agentcore && AWS_PROFILE=$AWS_PROFILE agentcore destroy
-cd ../bidiagent && AWS_PROFILE=$AWS_PROFILE agentcore destroy
+source .env
+
+# 1. BidiAgent (voz)
+cd bidiagent && AWS_PROFILE=$AWS_PROFILE agentcore destroy --force --delete-ecr-repo
+
+# 2. Text Agent
+cd ../agentcore && AWS_PROFILE=$AWS_PROFILE agentcore destroy --force --delete-ecr-repo
+
+# 3. Stack principal (Cognito, APIs, Lambda, CloudFront, MinutasTable)
 cd ../infrastructure && source .venv/bin/activate
 cdk destroy PharmAssistStack --profile $AWS_PROFILE --force
+
+# 4. Capa de datos — ESTE es el que corta el costo fijo (Aurora + NAT ≈ $76/mes)
+cd ../produccion-poc/infrastructure && source .venv/bin/activate
+cdk destroy ProduccionPocStack --profile $AWS_PROFILE --force
+
+# 5. Memorias AgentCore que el CLI marca como "pre-existing" y no borra
+cd ../.. && bash scripts/cleanup-orphan-memories.sh
 ```
+
+> **No te saltees el paso 4.** Destruir solo el stack principal deja Aurora Serverless v2 y el NAT Gateway corriendo, que son el **baseline fijo de ~$76/mes** independientemente de si usás la app o no.
+>
+> Los buckets `bedrock-agentcore-codebuild-sources-<account>-<region>` **no** se borran: son compartidos por todos los agentes AgentCore de la cuenta. Su costo es despreciable (~$0.01/mes).
 
 ---
 

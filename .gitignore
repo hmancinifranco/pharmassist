@@ -7,7 +7,6 @@ frontend/.env
 frontend/.env.local
 problematica
 docs/road-to-prod.html
-docs/road-to-prod.template.html
 docs/PRESENTACION.md
 docs/reviews/
 .kiro/kiro-aws-blueprint
@@ -72,8 +71,11 @@ voice-server/
 .tmp-validate/
 
 # === Exportables locales para stakeholders (no se commitean) ===
+# Son artefactos derivados: se regeneran con 'make docs-html' desde el Markdown.
 docs/*.html
 docs/*.pdf
+# Los templates de pandoc SÍ se versionan: son la fuente del render.
+!docs/*.template.html
 
 # === E2E Tests (Playwright) ===
 e2e/node_modules/

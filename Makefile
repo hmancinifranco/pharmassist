@@ -19,7 +19,7 @@ help: ## Mostrar esta ayuda
 	@echo ""
 	@echo "PharmAssist — Setup targets:"
 	@echo ""
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9_-]+:.*?## / {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
 	@echo ""
 	@echo "Orden recomendado para un setup desde cero:"
 	@echo "  1. make check-prereqs         (verifica Docker, CDK, toolkit, AWS CLI)"
@@ -205,6 +205,14 @@ deploy-all: ## Deploy completo: CDK + env-from-outputs + Text Agent + BidiAgent 
 	@echo "  → CloudFront: $$(grep CloudFrontDomain .env 2>/dev/null || echo '(ver outputs del stack)')"
 
 # ----------------------------------------------------------------------------
+# Documentación
+# ----------------------------------------------------------------------------
+
+.PHONY: docs-html
+docs-html: ## Regenerar los exportables HTML de docs/ desde el Markdown (requiere pandoc)
+	@bash scripts/build-docs-html.sh
+
+# ----------------------------------------------------------------------------
 # E2E tests
 # ----------------------------------------------------------------------------
 
@@ -229,12 +237,12 @@ dev-backend: ## Correr el backend localmente (http://localhost:8000)
 # ----------------------------------------------------------------------------
 
 .PHONY: destroy
-destroy: ## Destruir TODO (agents + stack + buckets). Pedirá confirmación.
+destroy: ## Destruir TODO (agents + stack principal + capa de datos Aurora). Pedirá confirmación.
 	@echo "⚠️  Vas a destruir TODOS los recursos de PharmAssist en la cuenta $$(aws sts get-caller-identity --profile $(AWS_PROFILE) --query Account --output text) región $(AWS_REGION)."
 	@read -p "¿Continuar? (escribí 'destroy' para confirmar): " confirm && [ "$$confirm" = "destroy" ]
-	@echo "→ [1/3] Destruyendo BidiAgent (depende de Text Agent, se destruye primero)..."
+	@echo "→ [1/4] Destruyendo BidiAgent (depende de Text Agent, se destruye primero)..."
 	@cd bidiagent && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
-	@echo "→ [2/3] Destruyendo Text Agent..."
+	@echo "→ [2/4] Destruyendo Text Agent..."
 	@cd agentcore && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
 	@echo "→ [3/4] Destruyendo CDK stack principal (PharmAssistStack)..."
 	@cd infrastructure && . .venv/bin/activate && cdk destroy $(STACK) --profile $(AWS_PROFILE) --force

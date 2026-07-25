@@ -32,7 +32,7 @@ graph TD
     end
 
     subgraph "Amazon Bedrock"
-        LLM[Claude Sonnet 4<br/>SQL generation + response]
+        LLM[Claude Sonnet 5<br/>SQL generation + response]
     end
 
     subgraph "AWS VPC (Private Subnets)"
@@ -63,7 +63,7 @@ graph TD
 
 1. El APM envia una pregunta en lenguaje natural (ej: "¿Cuantos medicos tengo en mi cartera?")
 2. El CodeAgent recibe el mensaje y construye un prompt con el schema completo + reglas de negocio
-3. Claude Sonnet 4 genera codigo Python con SQL embebido
+3. Claude Sonnet 5 genera codigo Python con SQL embebido
 4. El CodeAgent ejecuta el codigo en un REPL sandbox con `query_db()` disponible
 5. `query_db()` ejecuta el SQL contra Aurora PostgreSQL (read-only, timeout 5s)
 6. El resultado (DataFrame) se procesa y se formatea como respuesta en espanol
@@ -82,7 +82,7 @@ graph TD
 
 Ademas:
 - **Perfil AWS** con permisos Admin configurado (`AWS_PROFILE` en `.env`)
-- **Acceso a Bedrock** habilitado para `us.anthropic.claude-sonnet-4-20250514-v1:0`
+- **Acceso a Bedrock** habilitado para `us.anthropic.claude-sonnet-5`
 - **Variables** en `.env` raiz del proyecto (ver seccion Variables de entorno)
 
 ---
@@ -149,7 +149,7 @@ agentcore deploy -auc \
   -env DB_SECRET_ARN=$POC_AURORA_SECRET_ARN \
   -env DB_HOST=$POC_AURORA_ENDPOINT \
   -env DB_NAME=pharmassist_poc \
-  -env BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-20250514-v1:0 \
+  -env BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-5 \
   -env AWS_REGION=us-east-1
 ```
 
@@ -247,7 +247,7 @@ sed -i '' '/ProduccionPocStack outputs/d' .env
 | ECR Repository | (auto-created por agentcore) | ~$0.10/mes |
 | **TOTAL si queda activo** | | **~$75-80/mes** |
 
-> **NAT Gateway** y **Aurora** son los principales drivers de costo. Si solo necesitas pausar temporalmente, puedes escalar Aurora a 0 ACU (se detiene) pero el NAT Gateway sigue cobrando.
+> **NAT Gateway** y **Aurora** son los principales drivers de costo. Si solo necesitas pausar temporalmente, podés configurar Aurora con capacidad mínima de 0 ACU para que se [pause automáticamente](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html) sin conexiones (el baseline baja a ~$33/mes), pero el NAT Gateway sigue cobrando. El tradeoff es el cold start al reanudar. Ver la nota de costos del [README principal](../README.md#estimación-de-costos).
 
 ---
 
@@ -269,7 +269,7 @@ Variables que el CodeAgent necesita (pasadas via `-env` en `agentcore deploy`):
 | `DB_SECRET_ARN` | `$POC_AURORA_SECRET_ARN` |
 | `DB_HOST` | `$POC_AURORA_ENDPOINT` |
 | `DB_NAME` | `pharmassist_poc` |
-| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-20250514-v1:0` |
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-5` |
 | `AWS_REGION` | `us-east-1` |
 
 ---
@@ -285,7 +285,7 @@ Variables que el CodeAgent necesita (pasadas via `-env` en `agentcore deploy`):
 | Secrets Manager | ~$0.40 | 1 secret × $0.40/mes |
 | Lambda (seed) | ~$0 | Solo se usa una vez |
 | AgentCore Runtime | ~$0 | Pay per session (solo durante smoke tests) |
-| Bedrock (Claude Sonnet 4) | ~$0.50 | ~14 queries × ~3K input + ~500 output tokens |
+| Bedrock (Claude Sonnet 5) | ~$0.50 | ~14 queries × ~3K input + ~500 output tokens |
 | **TOTAL** | **~$76/mes** | Mientras Aurora y NAT estan activos |
 
 ### Costo unico de seed
