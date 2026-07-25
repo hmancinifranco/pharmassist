@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 
+// Credentials come from env — never hardcode real secrets in the repo.
+// Set DEMO_EMAIL / DEMO_PASSWORD before running (see .env.example).
 const DEMO_EMAIL = process.env.DEMO_EMAIL || 'peccy@example.com';
-const DEMO_PASSWORD = process.env.DEMO_PASSWORD || 'PharmAssist2026!';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || '';
 
 test.describe('PharmAssist E2E', () => {
   test('login and view dashboard', async ({ page }) => {
