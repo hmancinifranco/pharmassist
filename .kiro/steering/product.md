@@ -11,7 +11,7 @@ PharmAssist es un asistente inteligente para Agentes de Propaganda Médica (APMs
 ## Principios de Producto
 
 1. **Centrado en el APM**: Todo gira alrededor del día a día del visitador médico — su agenda, sus médicos, sus productos
-2. **Datos reales**: Trabaja con los CSVs reales del laboratorio (CRM, visitas, ventas). No datos inventados.
+2. **Datos reales**: Trabaja con los datos del laboratorio en Amazon Aurora PostgreSQL (CRM, visitas, ventas). No datos inventados.
 3. **IA conversacional**: El APM interactúa con un chat inteligente que entiende el contexto farmacéutico argentino
 4. **Accionable**: Cada respuesta del asistente debe ser útil y concreta — no genérica
 5. **Privacidad**: Los datos de médicos y ventas no salen de la infraestructura controlada (Bedrock, no APIs externas)
@@ -60,13 +60,15 @@ PharmAssist es un asistente inteligente para Agentes de Propaganda Médica (APMs
 
 ## Modelo de Datos
 
-### Médico (crm_medicos.csv)
+Las entidades viven en tablas de Amazon Aurora PostgreSQL (no en CSVs ni DynamoDB; DynamoDB se usa solo para minutas de voz). Los campos son conceptualmente:
+
+### Médico (tabla `medicos` en Aurora)
 Matrícula Nacional (MN), nombre, apellido, email, teléfonos, especialidad, dirección, zona, cadencia de visita, hospital, facultad, APM asignado, intereses/hobbies, religión, coordenadas
 
-### Visita (apm_visitas.csv)
+### Visita (tabla `visitas` en Aurora)
 ID, APM, médico (MN), fecha, zona, tipo (Presencial/Virtual/Telefónica), productos presentados, notas
 
-### Venta (ventas_reportadas.csv)
+### Venta (tabla `ventas` en Aurora)
 Año, mes, zona, producto, presentación, tipo OTC/RX, unidades vendidas, valor en ARS, crecimiento YoY%, farmacia
 
 ## Reglas de Negocio
@@ -93,4 +95,4 @@ Año, mes, zona, producto, presentación, tipo OTC/RX, unidades vendidas, valor 
 - Dark mode opcional
 - Chat como componente central, siempre accesible
 - Tablas con filtros, ordenamiento y exportación (MUI X Data Grid)
-- Carga de datos desde CSVs (no requiere base de datos externa para MVP)
+- Datos servidos desde Amazon Aurora PostgreSQL (datos sintéticos generados por una Lambda de seed)

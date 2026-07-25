@@ -1,6 +1,9 @@
 ---
-inclusion: fileMatch
-fileMatchPattern: "{backend/tools/web_search*,backend/tools/generacion*,backend/agents/**,agentcore/**}"
+name: ddgs-web-search
+description: Referencia de uso de DDGS (metabuscador sin API key) para búsqueda de información pública de médicos en PharmAssist. Usar al implementar o modificar backend/tools/web_search*.py, backend/tools/generacion*.py, o tools de agentcore que buscan info pública.
+metadata:
+  category: development
+  complexity: beginner
 ---
 
 # DDGS — Web Search para PharmAssist

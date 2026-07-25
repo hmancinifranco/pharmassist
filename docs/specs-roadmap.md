@@ -136,7 +136,7 @@
 
 **Gotchas para specs siguientes:**
 - El pipeline está desplegado pero NO ejecutado aún — las tablas Iceberg siguen vacías hasta que se ejecute la State Machine
-- Para ejecutar manualmente: `aws stepfunctions start-execution --state-machine-arn arn:aws:states:us-east-1:709578350924:stateMachine:pharmassist-ingestion-pipeline --input '{}' --profile hmancini+demos-Admin`
+- Para ejecutar manualmente: `aws stepfunctions start-execution --state-machine-arn arn:aws:states:us-east-1:<ACCOUNT_ID>:stateMachine:pharmassist-ingestion-pipeline --input '{}' --profile hmancini+demos-Admin`
 - El Glue ETL Job necesita que el GlueEtlRole (de DataLakeStack) tenga permisos sobre el bucket de CDK assets (para leer el script)
 - DMS Serverless tarda ~5 min en provisionar la primera vez que se ejecuta
 - El Athena workgroup `pharmassist-validation` tiene 100MB scan limit — suficiente para validación pero no para queries de producción
@@ -198,9 +198,9 @@
 **Recursos AWS desplegados:**
 - Aurora PostgreSQL cluster: `produccionpocstack-auroracluster23d869c0-7hduhahoevwu`
 - DB name: `pharmassist_poc` (2M+ filas en 21 tablas)
-- AgentCore Runtime: `pharmassist_poc_codeagent-un2E5n2NIK`
-- Lambda seed: `ProduccionPocStack-SeedDataFunction0523C2C2-uH6XeYapJa5G`
-- VPC: `vpc-09a9d2d63c4486091`
+- AgentCore Runtime: `pharmassist_poc_codeagent-<sufijo>` → `POC_CODEAGENT_ARN`
+- Lambda seed: `ProduccionPocStack-SeedDataFunction<sufijo>` → `POC_SEED_LAMBDA_ARN`
+- VPC: → `POC_VPC_ID`
 
 **Variables de entorno nuevas:**
 - `POC_AURORA_ENDPOINT`, `POC_AURORA_SECRET_ARN`, `POC_VPC_ID`, `POC_SEED_LAMBDA_ARN`
@@ -229,18 +229,18 @@
 - AgentCore runtime importa desde /var/task root (no `agentcore` package) — SIEMPRE usar try/except dual-path en imports
 - RDS CA bundle (`rds-ca-bundle.pem`) debe empaquetarse junto al código — no está auto-disponible en el container AgentCore
 - `agentcore deploy -auc` auto-crea role pero hay que agregar permisos de Secrets Manager + DynamoDB manualmente al role creado
-- Memory resource ID es `pharmassist_memory-V5OWtfDnjg` — referenciar con env var AGENTCORE_MEMORY_ID
-- Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:709578350924:runtime/agent-YHftSl284V`
-- VPC Security Group: `sg-06a114932a8ffd8be` — permite egress al Aurora SG
-- Subnet: `subnet-09cde5f1fbdc98fe7` — private subnet en AZ compatible
+- Memory resource ID tiene la forma `pharmassist_memory-<sufijo>` — referenciar con env var AGENTCORE_MEMORY_ID
+- Agent ARN: `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/agent-<sufijo>` (env `AGENTCORE_AGENT_ARN`)
+- VPC Security Group: env `AGENTCORE_VPC_SG` — permite egress al Aurora SG
+- Subnet: env `AGENTCORE_VPC_SUBNET` — private subnet en AZ compatible
 - El evaluation suite (`agentcore/evaluations/`) tiene 30+ preguntas pero requiere agent desplegado para correr
 - Voice mode (BidiAgent) solo necesita cambiar TEXT_AGENT_ARN en env var para apuntar al nuevo agente
 
-**ARNs/recursos desplegados:**
-- Unified Agent: `arn:aws:bedrock-agentcore:us-east-1:709578350924:runtime/agent-YHftSl284V`
-- Memory: `pharmassist_memory-V5OWtfDnjg`
-- VPC SG: `sg-06a114932a8ffd8be`
-- Subnet: `subnet-09cde5f1fbdc98fe7`
+**ARNs/recursos desplegados** (identificadores propios de cada cuenta — se resuelven via `.env`):
+- Unified Agent: `arn:aws:bedrock-agentcore:us-east-1:<ACCOUNT_ID>:runtime/agent-<sufijo>` → `AGENTCORE_AGENT_ARN`
+- Memory: `pharmassist_memory-<sufijo>` → `AGENTCORE_MEMORY_ID`
+- VPC SG: → `AGENTCORE_VPC_SG`
+- Subnet: → `AGENTCORE_VPC_SUBNET`
 
 **Variables de entorno nuevas:**
 - `AGENTCORE_MEMORY_ID` — ID del recurso Memory en AgentCore
@@ -248,3 +248,26 @@
 - `AGENTCORE_VPC_SUBNET` — Subnet ID para VPC mode
 - `AGENTCORE_VPC_SG` — Security Group ID para VPC mode
 - `MINUTAS_TABLE_NAME` — Nombre de la tabla DynamoDB de minutas
+
+---
+
+## Nota de cierre — Limpieza de repo + canonicalización Opción B (pre-push)
+
+**Decisión clave**: la arquitectura canónica del repo es ahora **Aurora PostgreSQL + CodeAgent** (Opción B), no el MVP DynamoDB original. El README, los diagramas, el Makefile, los scripts y las steering files se alinearon a esta realidad.
+
+**Cambios de documentación/tooling:**
+- README reescrito: capa de datos Aurora (+ MinutasTable), CodeAgent con 5 tools (`query_db` SQL), data provenance, setup con `deploy-data-layer` (ProduccionPocStack), cost model con baseline fijo (~$76 Aurora+NAT) + variable (~$8.26/APM).
+- Diagramas: mermaid del README actualizado (fuente de verdad, renderiza en GitHub); PNG stale de abril y `docs/architecture.drawio` (DynamoDB) eliminados; `produccion-poc/architecture.drawio` (Aurora) queda.
+- Makefile: `seed-data` (DynamoDB roto) → `seed-aurora` (invoca seed Lambda); nuevo `deploy-data-layer`; `deploy-all` en 6 pasos; `destroy` incluye ProduccionPocStack.
+- `env-from-outputs.sh`: quitados outputs de tablas DynamoDB eliminadas; captura outputs de ProduccionPocStack (`DB_SECRET_ARN`, `POC_*`), tolerante a stacks ausentes.
+- 6 steering files sincronizadas a Aurora (edición quirúrgica, sin romper guía vigente).
+
+**Higiene de repo (para push público):**
+- Borrados CSVs legacy de la raíz (`crm_medicos.csv`, `apm_visitas.csv`, `ventas_reportadas.csv`) — sin refs en código.
+- `.kiro/specs/` destrackeado y agregado a `.gitignore` (specs internos, quedan en disco local).
+- Account ID scrubbeado (`<ACCOUNT_ID>`) en docs; `git grep` confirma cero ocurrencias en archivos trackeados.
+- Destrackeados `.kiro/steering.zip` y `**/smoke_test_results.json` (artefactos generados).
+- Fix de secret: password demo hardcodeado en el test E2E → lee de env (`DEMO_PASSWORD`).
+- `consolidated-design.md` movido a `docs/`.
+
+**Gotcha para el próximo spec**: los IDs de recursos concretos (Cognito pools, cluster, subnets, SGs) siguen en session-handoff/roadmap por continuidad — no son credenciales, pero si el repo se hace público conviene revisarlos. El account ID ya está scrubbeado.

@@ -19,7 +19,7 @@ Cuando se hacen cambios funcionales al proyecto, actualizar la documentación af
 | Nuevo flujo de usuario | steering `product.md` |
 | Cambio en proceso de build/deploy | steering `deployment.md` |
 | Nueva dependencia importante | steering `tech.md` (dependencias) |
-| Cambio en modelo de datos / tablas DynamoDB | steering `product.md`, steering `agent-development.md` |
+| Cambio en modelo de datos / tablas Aurora o DynamoDB | steering `product.md`, steering `agent-development.md` |
 | Nuevo producto o zona | steering `product.md`, steering `tech.md` |
 | Cambio en CDK stack / constructs | steering `structure.md`, steering `deployment.md` |
 | Nueva variable de entorno | steering `deployment.md` (tabla de variables) |
@@ -31,7 +31,7 @@ Cuando se hacen cambios funcionales al proyecto, actualizar la documentación af
 - Nombre del proyecto: siempre "PharmAssist" (PascalCase)
 - Nombre del paquete frontend: `pharmassist-frontend`
 - Nombre del paquete backend: `pharmassist-backend`
-- Servicios AWS: referir por nombre oficial (Amazon Bedrock, Amazon DynamoDB, Amazon Bedrock AgentCore)
+- Servicios AWS: referir por nombre oficial (Amazon Bedrock, Amazon Aurora PostgreSQL, Amazon DynamoDB, Amazon Bedrock AgentCore)
 - Agentes: referir como "agentes Strands" o "Strands Agents"
 - Usuarios: referir como "APM" o "visitador médico"
 - Idioma de la UI y documentación de usuario: español argentino

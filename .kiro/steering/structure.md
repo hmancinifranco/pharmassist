@@ -13,42 +13,38 @@ pharmassist/
 │   │   ├── main.tsx                   # Entry point
 │   │   ├── App.tsx                    # Router + Layout principal
 │   │   ├── theme.ts                   # Tema MUI personalizado
-│   │   ├── api/                       # Axios clients y tipos de API
+│   │   ├── api/                       # Clients de API y servicios
 │   │   │   ├── client.ts             # Axios instance + HTTP API functions
 │   │   │   ├── auth.ts               # Cognito auth service
-│   │   │   ├── voice.ts              # VoiceService (Socket.IO + WebAudio)
+│   │   │   ├── credentials.ts        # Identity Pool → credenciales AWS temporales
+│   │   │   ├── voice.ts              # VoiceService (WSS + SigV4 → BidiAgent)
 │   │   │   └── websocket.ts          # ChatWebSocket class (WS streaming)
 │   │   ├── components/                # Componentes reutilizables
-│   │   │   ├── Chat/
-│   │   │   │   └── ChatPanel.tsx      # Panel de chat con el agente IA
-│   │   │   ├── Voice/
-│   │   │   │   ├── ParticleSphere.tsx # Esfera de partículas animada (Canvas 2D)
-│   │   │   │   └── VoiceOverlay.tsx   # Overlay fullscreen modo voz
-│   │   │   ├── Layout/
-│   │   │   │   └── AppLayout.tsx      # Layout con sidebar + topbar
-│   │   │   └── common/                # Botones, cards, etc. compartidos
-│   │   ├── pages/
-│   │   │   ├── DashboardPage.tsx      # Dashboard principal del APM
-│   │   │   ├── MedicosPage.tsx        # Listado de médicos (DataGrid)
-│   │   │   ├── MedicoDetailPage.tsx   # Perfil detallado de un médico
-│   │   │   ├── VisitasPage.tsx        # Historial de visitas
-│   │   │   ├── VentasPage.tsx         # Análisis de ventas
-│   │   │   └── PlanificacionPage.tsx  # Planificación de visitas
+│   │   │   ├── Chat/                  # Panel de chat con el agente IA
+│   │   │   ├── Cards/                 # Tarjetas del dashboard
+│   │   │   │   ├── TarjetaVisitasHoy.tsx
+│   │   │   │   ├── TarjetaCumpleanos.tsx
+│   │   │   │   └── TarjetaAlertasSLA.tsx
+│   │   │   ├── Audio/                 # Grabación de minutas de voz
+│   │   │   ├── Voice/                 # ParticleSphere + VoiceOverlay (modo voz)
+│   │   │   └── Layout/                # AppLayout (sidebar + topbar)
+│   │   ├── pages/                     # Solo 2 páginas: el chat es el centro del producto
+│   │   │   ├── DashboardPage.tsx      # Dashboard del APM + chat
+│   │   │   └── LoginPage.tsx          # Login con Cognito
 │   │   ├── stores/                    # Zustand stores
-│   │   │   └── useAppStore.ts
+│   │   ├── utils/
 │   │   └── types/                     # TypeScript types
-│   │       └── index.ts
 │   ├── index.html
 │   ├── vite.config.ts
 │   ├── tsconfig.json
 │   └── package.json
-├── backend/                           # Python + Strands Agents (framework web por definir)
-│   ├── main.py                        # Entry point del backend
+├── backend/                           # Python + FastAPI (Mangum → Lambda)
+│   ├── main.py                        # FastAPI app: dashboard, chat fallback, audio
+│   ├── lambda_handler.py              # Mangum adapter para Lambda
+│   ├── db.py                          # Pool de conexiones a Aurora + Secrets Manager
+│   ├── ws_proxy/                      # Lambda proxy del WebSocket → AgentCore
 │   ├── agents/
-│   │   ├── coordinator.py             # Agente coordinador (orquesta)
-│   │   ├── visitas_agent.py           # Agente de visitas
-│   │   ├── ventas_agent.py            # Agente de ventas
-│   │   └── crm_agent.py              # Agente de CRM/médicos
+│   │   └── assistant.py               # Agente Strands (uso local / fallback)
 │   ├── tools/
 │   │   ├── medicos_tools.py           # Herramientas Strands para médicos
 │   │   ├── visitas_tools.py           # Herramientas Strands para visitas
@@ -56,8 +52,8 @@ pharmassist/
 │   ├── models/
 │   │   └── schemas.py                 # Pydantic models
 │   ├── data/
-│   │   ├── loader.py                  # Carga y parseo de CSVs
-│   │   └── README.md                  # Instrucciones para colocar CSVs
+│   │   ├── loader.py                  # Acceso a datos (SQL a Aurora PostgreSQL)
+│   │   └── README.md                  # Notas de la capa de datos
 │   ├── lambdas/                       # Lambda functions independientes
 │   │   ├── transcribe_trigger.py      # S3 trigger → Amazon Transcribe
 │   │   └── summarize_minuta.py        # Transcribe complete → Bedrock → DDB
@@ -73,28 +69,46 @@ pharmassist/
 │   ├── models/                        # Copia de backend/models
 │   ├── data/                          # Copia de backend/data
 │   └── utils/                         # Copia de backend/utils
-├── infrastructure/                    # CDK en Python
-├── infrastructure/                    # CDK en Python
-│   ├── app.py                         # Entry point CDK
+├── bidiagent/                         # Agente de voz (Nova Sonic) para AgentCore
+│   ├── agent.py                       # FastAPI + uvicorn + BidiAgent (NO BedrockAgentCoreApp)
+│   ├── Dockerfile                     # Container deployment (requerido por awscrt)
+│   └── requirements.txt
+├── infrastructure/                    # CDK en Python — app principal
+│   ├── app.py                         # Entry point CDK (PharmAssistStack)
+│   ├── app_datalake.py                # Entry point DataLakeStack (road-to-prod)
+│   ├── app_datasources.py             # Entry point DataSourcesStack (road-to-prod)
+│   ├── app_ingestion.py               # Entry point IngestionStack (road-to-prod)
 │   ├── stacks/
-│   │   └── pharmassist_stack.py       # Stack principal (DynamoDB, Lambda, S3, CloudFront)
-│   ├── constructs/                    # L3 constructs reutilizables
-│   ├── tests/
-│   │   ├── unit/                      # CDK assertions
-│   │   └── integration/               # Tests contra recursos reales
-│   ├── requirements.txt
+│   │   ├── pharmassist_stack.py       # Stack principal (Cognito, HTTP/WS API, Lambda, MinutasTable, S3, CloudFront)
+│   │   ├── data_lake_stack.py         # S3 + Glue + Athena (road-to-prod, no desplegado)
+│   │   ├── data_sources_stack.py      # VPC + RDS que simula warehouses externos
+│   │   └── ingestion_stack.py         # DMS Serverless + Glue ETL
+│   ├── cdk_constructs/                # L3 constructs (NO 'constructs/': colisiona con el paquete CDK)
+│   ├── table_definitions/             # Definiciones de tablas Iceberg
+│   ├── tests/unit|integration/
 │   └── cdk.json
-├── data/                              # CSVs fuente (gitignored en prod)
-│   ├── crm_medicos.csv
-│   ├── apm_visitas.csv
-│   └── ventas_reportadas.csv
-├── scripts/                           # Scripts de automatización
-│   └── deploy-frontend.sh            # Build + deploy frontend a S3/CloudFront
+├── produccion-poc/                    # POC del CodeAgent + CAPA DE DATOS REAL
+│   ├── infrastructure/
+│   │   ├── stacks/produccion_poc_stack.py   # VPC + Aurora Serverless v2 + Lambda de seed
+│   │   └── lambda/seed/
+│   │       ├── ddl.sql                # ★ Fuente canónica del modelo de datos (21 tablas)
+│   │       ├── seed_handler.py         # Orquesta la generación (~2M filas)
+│   │       └── generators/             # Generadores de datos sintéticos
+│   ├── agent/                         # Agente del POC + prompts (schema, business_rules)
+│   └── tests/e2e/
+├── e2e/                               # Tests end-to-end con Playwright
+├── data/                              # CSVs legacy (los datos viven en Aurora vía Lambda de seed)
+├── scripts/                           # Scripts de automatización (deploy, seed, usuarios demo)
+├── docs/                              # Documentación (ver docs/kiro-skills.md como entrada)
+│   └── decisions/                     # ADRs
+├── Makefile                           # Orquesta setup y deploy completo
 ├── .env                               # Variables de entorno (NO en git)
 ├── .env.example                       # Template
 ├── .gitignore
 └── README.md
 ```
+
+> El modelo de datos vive en `produccion-poc/`, no en `infrastructure/`. Es el desvío estructural más confuso del repo: `ProduccionPocStack` empezó como POC y terminó siendo la capa de datos productiva.
 
 ## Convenciones de nombres
 
@@ -133,7 +147,7 @@ pharmassist/
 ### Backend
 - **Agents** → Strands Agents con system prompts y tools específicos
 - **Tools** → Funciones Python decoradas como herramientas Strands (consultan datos)
-- **Data** → Carga de CSVs con pandas, expuestos via tools
+- **Data** → Consulta a Aurora PostgreSQL vía `query_db` (SQL); minutas de voz en DynamoDB
 - **API** → Framework web por definir en spec, expone endpoints para el frontend
 
 ### AgentCore
@@ -162,11 +176,11 @@ pharmassist/
 ```
 Frontend (React) ←→ API REST (Python/Lambda) ←→ Strands Agents ←→ Bedrock (Claude)
                                                       ↕
-                                             Tools (DynamoDB/CSVs)
+                                        Tools (Aurora PostgreSQL + DynamoDB minutas)
 
 Frontend (React) ←→ WebSocket API GW ←→ Lambda Proxy ←→ AgentCore Runtime ←→ Strands Agent
                                                                                     ↕
-                                                                             Tools (DynamoDB)
+                                                                  Tools (Aurora + DynamoDB minutas)
 
 Frontend (React) ←→ WSS + SigV4 ←→ AgentCore (BidiAgent) ←→ Nova Sonic ←→ consultarAsistente
                                                                                   ↕

@@ -10,13 +10,13 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
 ![AWS CDK](https://img.shields.io/badge/AWS%20CDK-Python-FF9900?logo=amazonaws&logoColor=white)
 ![Amazon Bedrock](https://img.shields.io/badge/Bedrock-AgentCore-8C4FFF?logo=amazonaws&logoColor=white)
-![Claude](https://img.shields.io/badge/Claude-Opus%204.6-D97757)
+![Claude](https://img.shields.io/badge/Claude-Sonnet%205-D97757)
 ![Nova Sonic](https://img.shields.io/badge/Nova%20Sonic-Speech%20to%20Speech-8C4FFF)
 ![Strands](https://img.shields.io/badge/Strands-Agents%20SDK-000000)
 ![Built with Kiro](https://img.shields.io/badge/Built%20with-Kiro-5E7CE2)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-> Proyecto MVP publicado con fines de referencia y aprendizaje. Los datos (`crm_medicos.csv`, `apm_visitas.csv`, `ventas_reportadas.csv`) son **sintéticos** — nombres, emails, teléfonos y direcciones fueron generados para la demo.
+> Proyecto publicado con fines de referencia y aprendizaje. Los datos son **sintéticos** — médicos, visitas, prescripciones y ventas se generan en Amazon Aurora PostgreSQL mediante una Lambda de seed. Nombres, emails, teléfonos y direcciones fueron generados para la demo.
 
 ---
 
@@ -33,6 +33,8 @@
 - [Variables de entorno](#variables-de-entorno)
 - [API Endpoints](#api-endpoints)
 - [Tools del agente](#tools-del-agente)
+- [Modelo de datos](#modelo-de-datos)
+- [Documentación](#documentación)
 - [Destruir todo](#destruir-todo)
 - [Troubleshooting](#troubleshooting)
 - [Seguridad y licencia](#seguridad-y-licencia)
@@ -49,8 +51,6 @@
 ---
 
 ## Arquitectura
-
-![Arquitectura PharmAssist](generated-diagrams/pharmassist-architecture.png)
 
 ### Diagrama de componentes
 
@@ -83,17 +83,18 @@ flowchart TB
     end
 
     subgraph AC["🤖 Bedrock AgentCore Runtime"]
-        TA["Text Agent<br/>Strands · 15 tools<br/>STM Memory"]
+        TA["CodeAgent (Text)<br/>Strands · query_db (SQL)<br/>5 tools · STM Memory · VPC"]
         BA["BidiAgent<br/>FastAPI + uvicorn<br/>Nova Sonic tool"]
     end
 
     subgraph Models["🧠 Bedrock Foundation Models"]
-        CL["Claude Opus 4.6<br/>text + summarize"]
+        CL["Claude Sonnet 5<br/>text + summarize"]
         NS["Nova Sonic 2<br/>speech-to-speech"]
     end
 
     subgraph Data["💾 Storage"]
-        DDB[("DynamoDB<br/>5 tables · PITR")]
+        AUR[("Aurora PostgreSQL<br/>Serverless v2 · VPC<br/>médicos · visitas · ventas")]
+        DDB[("DynamoDB · MinutasTable<br/>minutas de voz")]
         S3A[("S3 · Audio Uploads<br/>30d lifecycle")]
     end
 
@@ -104,11 +105,14 @@ flowchart TB
     SPA -->|Login| UP
     SPA -->|JWT → AWS creds| IP
 
-    SPA -->|REST + JWT Bearer| HTTP --> FA --> DDB
+    SPA -->|REST + JWT Bearer| HTTP --> FA
+    FA -->|dashboard queries| AUR
+    FA -->|minutas| DDB
     FA -->|presigned URL| S3A
 
     SPA -->|WSS + JWT token| WS --> WSL -->|invoke_agent_runtime<br/>SSE stream| TA
-    TA --> DDB
+    TA -->|query_db · SQL| AUR
+    TA -->|minutas| DDB
     TA -->|InvokeModel| CL
 
     SPA -.->|WSS + SigV4<br/>presigned URL| BA
@@ -128,7 +132,7 @@ flowchart TB
     class CF,S3FE edge
     class UP,IP auth
     class TA,BA,CL,NS agent
-    class DDB,S3A data
+    class AUR,DDB,S3A data
     class FA,WSL,TL,SL,HTTP,WS,TR,EB lambda
 ```
 
@@ -142,9 +146,9 @@ sequenceDiagram
     participant Cog as Cognito<br/>User Pool
     participant WS as WebSocket API
     participant λ as WS Proxy Lambda
-    participant AC as AgentCore<br/>Text Agent
-    participant Cl as Claude Opus 4.6
-    participant DDB as DynamoDB
+    participant AC as AgentCore<br/>CodeAgent (Text)
+    participant Cl as Claude Sonnet 5
+    participant AUR as Aurora<br/>PostgreSQL
 
     APM->>SPA: Login (email + password)
     SPA->>Cog: InitiateAuth
@@ -162,14 +166,14 @@ sequenceDiagram
     WS->>λ: sendMessage event
     λ->>AC: invoke_agent_runtime<br/>(prompt, apm_id, session_id)
 
-    Note over AC,Cl: Strands agent + 15 tools
+    Note over AC,Cl: Strands CodeAgent + query_db (SQL) + 4 tools
 
-    AC->>Cl: user prompt + system + tool defs
-    Cl-->>AC: tool_use: buscar_medicos_por_zona("Belgrano")
-    AC->>DDB: Query APM-index + Zona-index
-    DDB-->>AC: 12 médicos
-    AC-->>λ: SSE chunk: "tool_use"
-    λ-->>SPA: {type:"tools", steps:["Buscando médicos..."]}
+    AC->>Cl: user prompt + schema DDL + system + tool defs
+    Cl-->>AC: tool_use: query_db("SELECT ... FROM cartera_medica<br/>JOIN doctor ... WHERE apm_id=...")
+    AC->>AUR: SQL read-only (timeout 5s)
+    AUR-->>AC: 12 médicos (DataFrame)
+    AC-->>λ: SSE chunk: "tool_step"
+    λ-->>SPA: {type:"tool_step", label:"Consultando base de datos..."}
 
     AC->>Cl: tool result + continue
     Cl-->>AC: streaming tokens
@@ -181,7 +185,8 @@ sequenceDiagram
     end
 
     AC-->>λ: SSE end
-    λ-->>SPA: {type:"complete", session_id}
+    λ-->>SPA: {type:"complete", payload:{result,<br/>structured:{table, sql, suggestions}}}
+    Note over SPA: Renderiza DataGrid + panel<br/>"¿De dónde salió esto?" (SQL + tablas)
 ```
 
 ---
@@ -192,10 +197,10 @@ sequenceDiagram
 |---|---|---|
 | Frontend | React + TypeScript + MUI v6 + Vite + Zustand | React 18, MUI 6, Vite 7 |
 | Backend | FastAPI + Mangum (ASGI → Lambda) | Python 3.12 |
-| Agente de texto | Strands Agents SDK + Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` |
+| Agente de texto | Strands CodeAgent (`query_db` SQL) + Claude Sonnet 5 | `us.anthropic.claude-sonnet-5` |
 | Agente de voz | Strands BidiAgent + Nova Sonic 2 | `amazon.nova-2-sonic-v1:0` |
-| Runtime de agentes | Amazon Bedrock AgentCore (direct_code + container) | — |
-| Base de datos | Amazon DynamoDB (5 tablas, PAY_PER_REQUEST, PITR habilitado) | on-demand |
+| Runtime de agentes | Amazon Bedrock AgentCore (direct_code + container, VPC mode) | — |
+| Base de datos | Amazon Aurora PostgreSQL Serverless v2 (médicos, visitas, ventas) + DynamoDB (`MinutasTable`) | on-demand |
 | Autenticación | Amazon Cognito User Pool (JWT) + Identity Pool (SigV4) | — |
 | Streaming | API Gateway WebSocket + Lambda Proxy | — |
 | Transcripción | Amazon Transcribe (batch, es-ES) | — |
@@ -221,11 +226,17 @@ sequenceDiagram
 - **Alertas SLA**: médicos con visitas vencidas según su cadencia (Mensual/Trimestral/Semestral/Anual/Digital)
 
 ### Chat conversacional (WebSocket streaming)
-- Streaming de respuestas en tiempo real (protocolo `chunk`/`complete`/`tools`/`error`)
-- Reconexión automática con backoff exponencial
+- Streaming de respuestas en tiempo real (protocolo `chunk`/`complete`/`tool_step`/`error`)
+- Reconexión automática con backoff exponencial + refresh de token Cognito
 - Fallback a HTTP POST cuando WebSocket no está disponible
 - Gestión de sesiones via AgentCore STM Memory
-- 15 tools especializados (CRM, visitas, ventas, web search, generación)
+- **CodeAgent**: el LLM genera SQL dinámicamente y lo ejecuta contra Aurora vía la tool `query_db` (read-only, timeout 5s), más 4 tools de apoyo (web search, brief, minutas, generación de mensajes)
+
+### Data provenance ("¿De dónde salió esto?")
+- Cada respuesta con datos muestra un panel desplegable con el **SQL exacto** que ejecutó el agente
+- Deriva y lista las **tablas consultadas** y las **operaciones aplicadas** (agrupación, conteo, suma, cruce, ordenamiento) a partir del SQL
+- Renderiza los resultados como **MUI DataGrid** interactivo con headers legibles (no nombres crudos de columna)
+- Transparencia total: el APM ve que detrás de la respuesta en lenguaje natural hay una consulta real a datos estructurados
 
 ### Modo voz (Nova Sonic 2 — BidiAgent)
 - Interfaz fullscreen con esfera de partículas animada
@@ -254,7 +265,7 @@ El proyecto incluye un `Makefile` que orquesta todo el flujo. Un setup desde cer
 # 1. Clonar y configurar .env
 cp .env.example .env
 # Editar .env — completar AWS_PROFILE, AWS_ACCOUNT_ID y passwords demo
-#              (los valores que dependen del CDK se llenan solos después)
+#              (los valores que dependen de los stacks se llenan solos después)
 
 # 2. Validar herramientas + credenciales AWS
 make check-prereqs
@@ -265,24 +276,26 @@ make bootstrap
 # 4. Bootstrapear CDK (solo la primera vez en cada cuenta + región)
 make cdk-bootstrap
 
-# 5. Deploy CDK (tarda ~5-8 min)
+# 5. Deploy de la capa de datos (VPC + Aurora Serverless v2 + seed Lambda, ~8-12 min)
+make deploy-data-layer
+
+# 6. Deploy del stack principal (Cognito, API GW, WebSocket, Lambda, CloudFront, ~5-8 min)
 make deploy-infra
 
-# 6. Escribir los outputs del stack en .env
+# 7. Escribir los outputs de ambos stacks en .env
 make env-from-outputs
 
-# 7. Cargar CSVs en DynamoDB + crear usuario demo "Peccy"
+# 8. Poblar Aurora (seed Lambda ~5-10 min) + crear usuario demo "Peccy" en Cognito
 make seed
 
-# 8. Deploy Text Agent a AgentCore (tarda ~3 min)
-make deploy-text-agent
+# 9. Deploy Text Agent (CodeAgent, VPC mode) + BidiAgent (voz) a AgentCore (~6-8 min, requiere Docker)
+make deploy-text-agent && make deploy-bidi-agent
 
-# 9. Deploy BidiAgent (voz) a AgentCore (tarda ~3-5 min, requiere Docker)
-make deploy-bidi-agent
-
-# 10. Redeploy del stack + build/deploy del frontend
+# 10. Redeploy del stack (para inyectar AGENTCORE_AGENT_ARN en el proxy) + build/deploy del frontend
 make deploy-infra && make deploy-frontend
 ```
+
+> Atajo: `make deploy-all` corre los pasos 5→10 en orden. El seed (paso 8) se corre una sola vez y es aparte.
 
 Al terminar, el último paso imprime la URL de CloudFront. Login con:
 
@@ -308,7 +321,7 @@ Además:
 
 - **Perfil AWS** con permisos Admin (`aws configure --profile <tu-perfil>`).
 - **Acceso a Bedrock habilitado** en [consola Bedrock → Model access](https://console.aws.amazon.com/bedrock/home?region=us-east-1#/modelaccess) para:
-  - `anthropic.claude-opus-4-6` (inference profile `us.anthropic.claude-opus-4-6-v1`)
+  - `anthropic.claude-sonnet-5` (inference profile `us.anthropic.claude-sonnet-5`)
   - `amazon.nova-2-sonic-v1:0`
   - `amazon.nova-2-lite-v1:0`
 - **Docker Desktop** abierto antes de deployar (CDK y el BidiAgent lo usan).
@@ -317,23 +330,24 @@ Además:
 
 ## Probar la demo
 
-El usuario `Peccy` viene cargado con:
+El usuario `Peccy` (`custom:apm_id = APM_001`) opera sobre los datos sintéticos generados en Aurora por la seed Lambda:
 
-- 12 médicos asignados en Belgrano-Centro, Núñez-Centro y Palermo-Norte
-- ~140 visitas históricas (2025-01 → 2026-12)
-- ~50 visitas planificadas futuras
-- Cumpleaños distribuidos en todos los meses
-- Alertas SLA generadas automáticamente
+- ~112 médicos en su cartera, con especialidades e instituciones variadas
+- Visitas históricas y agenda planificada por ciclo
+- Prescripciones y ventas para análisis de share y tendencias
+- Cumpleaños distribuidos en el año y alertas SLA por cadencia vencida
 
 ### Preguntas sugeridas (chat)
 
-1. "Dame un brief sobre la Dra. Florencia Peralta" — combina CRM + búsqueda web + historial + minutas
-2. "Se me liberó un hueco, ¿a quién puedo visitar?" — ranking por SLA + ventas + visitas pendientes
-3. "¿Qué productos están cayendo en ventas en mi zona?" — análisis YoY con datos reales
-4. "¿Cuántos médicos tengo asignados?" — consulta rápida al CRM
-5. "¿Qué médicos tengo en Belgrano?" — filtro por zona
-6. "¿Cuáles son mis visitas de hoy?" — agenda planificada
-7. "Prepárame talking points para visitar al Dr. Rodrigo Estévez que es Neurólogo" — generación contextual
+1. "¿Cuántos médicos tengo asignados?" — conteo rápido (mostrá el panel "¿De dónde salió esto?" para ver el SQL)
+2. "Listame mis primeros 5 médicos con su especialidad" — DataGrid + data provenance
+3. "¿Cuáles son mis visitas de hoy?" — agenda planificada del ciclo
+4. "Dame un brief sobre el Dr. Pablo Torres" — combina datos internos + búsqueda web + historial + minutas
+5. "¿Qué especialidades predominan en mi cartera?" — agregación (GROUP BY) sobre Aurora
+6. "¿Qué marcas tienen mejor share en mi zona?" — análisis de market share con JOINs multi-tabla
+7. "¿Qué médicos no visité en los últimos 2 ciclos?" — cobertura de cartera
+
+> Cada respuesta con datos muestra el botón **"¿De dónde salió esto?"** con el SQL exacto, las tablas consultadas y las operaciones aplicadas.
 
 ---
 
@@ -389,27 +403,31 @@ ln -sf ../.env frontend/.env   # Vite lee .env del dir actual
 cd infrastructure && source .venv/bin/activate
 source ../.env
 cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION --profile $AWS_PROFILE
+cd ..
 
-# 4. Deploy stack
+# 4a. Deploy capa de datos (VPC + Aurora + seed Lambda)
+cd produccion-poc/infrastructure && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+source ../../.env
+cdk deploy ProduccionPocStack --profile $AWS_PROFILE --require-approval never
+cd ../..
+
+# 4b. Deploy stack principal
+cd infrastructure && source .venv/bin/activate
 cdk deploy PharmAssistStack --profile $AWS_PROFILE --require-approval never
 cd ..
 
-# 5. Outputs → .env
+# 5. Outputs de ambos stacks → .env (Aurora secret, tabla minutas, Cognito, URLs)
 bash scripts/env-from-outputs.sh
 
-# 6. Seed datos + usuario Peccy
+# 6. Poblar Aurora (invoca la seed Lambda) + usuario Peccy en Cognito
 source .env
+aws lambda invoke --function-name $POC_SEED_LAMBDA_ARN --payload '{}' \
+  --cli-read-timeout 900 --profile $AWS_PROFILE /tmp/seed.json && cat /tmp/seed.json
 cd backend && source .venv/bin/activate
-python -m data.loader \
-  --medicos-table $MEDICOS_TABLE_NAME \
-  --visitas-table $VISITAS_TABLE_NAME \
-  --ventas-table $VENTAS_TABLE_NAME \
-  --planificadas-table $PLANIFICADAS_TABLE_NAME \
-  --data-dir .. --year $(date +%Y)
 python ../scripts/setup_peccy_user.py
 cd ..
 
-# 7. Deploy Text Agent (el script extrae el ARN y adjunta permisos DDB al rol)
+# 7. Deploy Text Agent (CodeAgent, VPC mode — conecta a Aurora vía DB_SECRET_ARN)
 bash scripts/deploy-text-agent.sh
 
 # 8. Deploy BidiAgent
@@ -435,7 +453,11 @@ bash scripts/deploy-frontend.sh
 | `AWS_ACCOUNT_ID` | CDK | ID de cuenta AWS |
 | `BEDROCK_MODEL_ID` | Agentes | Inference profile ID (prefix `us.`) |
 | `TAG_PROJECT`, `TAG_ENVIRONMENT`, `TAG_OWNER` | CDK Aspects | Tags aplicados a todos los recursos |
-| `MEDICOS_TABLE_NAME`, `VISITAS_TABLE_NAME`, `VENTAS_TABLE_NAME`, `PLANIFICADAS_TABLE_NAME`, `MINUTAS_TABLE_NAME` | Agente, Lambda | DynamoDB table names (outputs CDK) |
+| `DB_SECRET_ARN` | Agente, Lambda | ARN del secret de Aurora (output de ProduccionPocStack) |
+| `POC_AURORA_ENDPOINT`, `POC_AURORA_SECRET_ARN`, `POC_VPC_ID`, `POC_SEED_LAMBDA_ARN` | Capa de datos | Outputs de ProduccionPocStack (Aurora, VPC, seed Lambda) |
+| `AGENTCORE_VPC_SUBNET`, `AGENTCORE_VPC_SG` | Deploy del Text Agent | Subnet privada y security group para AgentCore en modo VPC (outputs `PrivateSubnetIds` y `AgentSecurityGroupId`) |
+| `AGENTCORE_MEMORY_ID` | Text Agent | **Opcional.** Habilita memoria conversacional. Vacío = el agente responde igual pero sin recordar el hilo. Se crea con `agentcore memory create` |
+| `MINUTAS_TABLE_NAME` | Agente, Lambda | DynamoDB table de minutas de voz (output PharmAssistStack) |
 | `API_URL`, `VITE_API_URL` | Frontend, tests | HTTP API Gateway URL |
 | `VITE_WS_URL` | Frontend | WebSocket API URL |
 | `USER_POOL_ID`, `VITE_COGNITO_USER_POOL_ID` | Frontend, scripts | Cognito User Pool ID |
@@ -467,8 +489,8 @@ bash scripts/deploy-frontend.sh
 | POST | `/api/dashboard/visits/complete` | Marcar visita como completada |
 | POST | `/api/dashboard/birthdays/generate-message` | Generar mensaje de cumpleaños con IA |
 | GET | `/api/audio/presigned-url` | Presigned URL para subir audio a S3 |
-| POST | `/api/minutas` | Guardar minuta de visita |
-| GET | `/api/minutas` | Listar minutas |
+
+> Las minutas de voz no tienen endpoint REST propio: las escribe el pipeline asincrónico (Transcribe → EventBridge → Lambda `summarize_minuta` → DynamoDB) y el agente las lee con la tool `obtener_minutas`.
 
 ### WebSocket API (chat streaming)
 
@@ -493,23 +515,50 @@ Conexión directa del browser a AgentCore via WSS + SigV4 presigned URL. Eventos
 
 ## Tools del agente
 
+El CodeAgent usa **5 tools**. La consulta de datos se resuelve con una sola tool (`query_db`) que ejecuta SQL generado dinámicamente por el LLM contra Aurora — reemplaza las decenas de tools de dominio del enfoque anterior por SQL flexible sobre el schema completo.
+
 | Tool | Dominio | Descripción |
 |---|---|---|
-| `buscar_medico_por_nombre` | CRM | Busca médico por nombre/apellido |
-| `buscar_medicos_por_zona` | CRM | Lista médicos de una zona |
-| `buscar_medicos_por_apm` | CRM | Lista toda la cartera del APM |
-| `obtener_perfil_medico` | CRM | Perfil completo por matrícula |
-| `obtener_visitas_por_medico` | Visitas | Historial de visitas a un médico |
-| `obtener_visitas_planificadas_hoy` | Visitas | Agenda de hoy |
-| `obtener_historial_visitas_apm` | Visitas | Historial por rango de fechas |
-| `obtener_minutas_medico` | Visitas | Últimas 3 minutas de un médico |
-| `sugerir_proxima_visita` | Visitas | Ranking de médicos priorizados |
-| `obtener_ventas_por_zona` | Ventas | Ventas de una zona en un período |
-| `obtener_ventas_declinando` | Ventas | Productos con caída YoY (top 15) |
-| `obtener_ventas_por_producto` | Ventas | Detalle de un producto en una zona |
-| `buscar_info_publica_medico` | Web | Info pública del médico (DDGS) |
-| `generar_brief_medico` | Generación | Brief completo (CRM + web + visitas + minutas) |
-| `generar_mensaje_cumpleanos` | Generación | Mensaje personalizado con IA |
+| `query_db` | Datos (SQL) | Ejecuta SQL read-only (SELECT/WITH) contra Aurora PostgreSQL. Timeout 5s, máx. 100 filas en metadata. Cubre médicos, visitas, ventas, prescripciones, cartera, cumpleaños, SLA — cualquier consulta de datos |
+| `buscar_info_publica` | Web | Info pública del médico vía DDGS (metabuscador, sin API key) |
+| `generar_brief` | Generación | Brief pre-visita completo (datos Aurora + web + historial + minutas) |
+| `obtener_minutas` | Visitas | Últimas minutas registradas de un médico (DynamoDB) |
+| `generar_mensaje_cumpleanos` | Generación | Mensaje de cumpleaños personalizado con IA |
+
+Cada respuesta con datos incluye el **SQL exacto ejecutado** en el payload `structured.sql`, que el frontend muestra en el panel de data provenance.
+
+---
+
+## Modelo de datos
+
+El agente consulta un modelo **relacional** de 21 tablas (~2M filas) en Aurora PostgreSQL, que replica la estructura real de datos de un laboratorio farmacéutico argentino. Combina dos mundos que normalmente viven separados:
+
+- **CRM interno** — a quién visito, qué le presenté, qué debo promocionar en el ciclo (`apm`, `doctor`, `cartera_medica`, `agenda`, `detalle_promocion_producto`, ...)
+- **Auditoría de prescripciones y ventas** — qué prescribe realmente cada médico, con qué share de mercado y cómo evoluciona (`"UltimaMillaMedico"`, `"UltimaMillaMarca"`, ...)
+
+El valor está en cruzarlos: el CRM dice a quién visitaste, la auditoría dice si eso se tradujo en prescripciones. Ninguna fuente sola responde "¿en qué médicos que visito estoy perdiendo share?".
+
+**No usamos una ontología ni un grafo de conocimiento**, aunque estaban diseñados y documentados. El detalle del razonamiento está en el ADR, pero el resumen es: las preguntas reales del negocio son agregaciones sobre caminos de JOIN de profundidad **fija y conocida**, no traversals de profundidad variable; las relaciones de valor (`Médico —prescribe[share]→ Marca`) **ya vienen pre-computadas** por la fuente, así que modelarlas como aristas sólo habría agregado una copia a sincronizar; los LLM escriben SQL mucho mejor que openCypher; y mostrar el SQL al usuario es auditable por cualquier analista del laboratorio. El POC lo validó empíricamente: 85,7% de aciertos en menos de 6 s sobre 2M filas.
+
+El conocimiento semántico que el DDL no expresa (los 5 caminos de JOIN, las 10 reglas de negocio, cómo se calcula EVO TRM) vive en el system prompt: una ontología ligera, versionada con git y editable sin migrar datos.
+
+📖 **[`docs/data-model.md`](docs/data-model.md)** — modelo completo, diagrama ER, relaciones y reglas
+📖 **[`docs/decisions/0001-postgres-en-vez-de-ontologia.md`](docs/decisions/0001-postgres-en-vez-de-ontologia.md)** — el ADR con los tradeoffs y cuándo revisar la decisión
+
+---
+
+## Documentación
+
+| Documento | Contenido |
+|---|---|
+| [`docs/data-model.md`](docs/data-model.md) | Modelo de datos relacional: 21 tablas, diagrama ER, los 5 caminos de JOIN, reglas de negocio, métricas del dominio y controles de acceso del agente |
+| [`docs/decisions/0001-postgres-en-vez-de-ontologia.md`](docs/decisions/0001-postgres-en-vez-de-ontologia.md) | ADR: por qué PostgreSQL relacional y no una ontología o grafo, con consecuencias negativas asumidas y disparadores para reevaluar |
+| [`docs/kiro-skills.md`](docs/kiro-skills.md) | Cómo trabajar en este repo con Kiro: las 5 skills, los 8 steering files, specs y hooks. Punto de entrada recomendado para contribuir |
+| [`docs/road-to-prod.md`](docs/road-to-prod.md) | Camino de demo a MLP productivo: ingesta multi-fuente, data lake Iceberg, los 3 carriles de respuesta, fases y costos |
+| [`docs/research-external-schemas.md`](docs/research-external-schemas.md) | Schemas de las fuentes externas y las 15 preguntas priorizadas por el cliente que sirven de test suite |
+| [`docs/specs-roadmap.md`](docs/specs-roadmap.md) | Tracker de los specs con notas de cierre: decisiones tomadas, desvíos y gotchas de cada uno |
+| [`docs/session-handoff.md`](docs/session-handoff.md) | Estado actual del despliegue y prompt para retomar el trabajo |
+| [`produccion-poc/README.md`](produccion-poc/README.md) | El POC que validó el CodeAgent contra el modelo de datos completo |
 
 ---
 
@@ -552,7 +601,9 @@ cdk destroy PharmAssistStack --profile $AWS_PROFILE --force
 ## Seguridad y licencia
 
 - Nunca hagas commit de tu `.env` — usa `.env.example` como template.
-- Los CSVs son **datos sintéticos**. No representan información real de médicos o pacientes.
+- Los datos son **sintéticos**: los genera la Lambda de seed directamente en Aurora. Nombres, matrículas, emails e instituciones son ficticios y no representan información real de médicos ni pacientes. El laboratorio de origen del modelo no se identifica en el repo.
+- **Aislamiento de datos por APM**: el `apm_id` se toma del claim `custom:apm_id` del JWT de Cognito y se inyecta en el system prompt del lado del servidor — no es un valor que el usuario pueda manipular desde el prompt.
+- **El agente no puede escribir en la base**: se conecta con un rol `GRANT SELECT` y la tool `query_db` sólo acepta `SELECT`/`WITH`, rechaza sentencias múltiples y aplica un timeout de 5 s. Ver [`docs/data-model.md`](docs/data-model.md#acceso-del-agente-a-los-datos).
 - Reporta vulnerabilidades según [SECURITY.md](SECURITY.md).
 - Para producción: rota passwords, habilita MFA en Cognito, revisa IAM al mínimo necesario.
 
@@ -562,7 +613,22 @@ Distribuido bajo la licencia MIT. Ver [LICENSE](LICENSE).
 
 ## Estimación de costos
 
-Cálculo de referencia para **1 APM activo** usando PharmAssist de forma típica. Todos los precios son **on-demand en us-east-1** al 27-abr-2026 — precios en otras regiones varían (ver notas al final).
+El costo tiene **dos componentes**: un **baseline fijo de infraestructura** (Aurora + NAT Gateway de la capa de datos, ~$76/mes, independiente de la cantidad de APMs) y un **costo variable por APM** (Bedrock + Transcribe + serverless). Todos los precios son **on-demand en us-east-1** al 27-abr-2026 — precios en otras regiones varían (ver notas al final).
+
+### Baseline fijo de infraestructura (compartido por todos los APMs)
+
+| Recurso | Costo/mes | Notas |
+|---|---|---|
+| Aurora PostgreSQL Serverless v2 | ~$43 | 0.5 ACU mínimo × $0.12/ACU-hr × 730h |
+| NAT Gateway (VPC de Aurora) | ~$32 | $0.045/hr × 730h + procesamiento |
+| Secrets Manager | ~$0.40 | credenciales de Aurora |
+| **Subtotal fijo** | **~$76/mes** | independiente de la cantidad de APMs |
+
+> El stack está configurado con `serverless_v2_min_capacity=0.5` (máx. 4 ACU, un solo writer) y **1 NAT Gateway**, así que el baseline es el de arriba.
+>
+> Aurora Serverless v2 [soporta escalar a 0 ACU con auto-pausa](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-serverless-v2-auto-pause.html): poniendo el mínimo en 0, la base se pausa cuando no hay conexiones y el baseline baja de ~$76 a ~$33/mes (sólo el NAT). El tradeoff es el **cold start** al reanudar, que puede exceder el timeout de 5 s de `query_db` en la primera consulta. Para una demo con uso intermitente suele valer la pena; para un entorno con SLA de respuesta, no. Para entornos efímeros la opción más simple sigue siendo destruir la capa de datos con `make destroy` cuando no se usa.
+
+### Costo variable — 1 APM activo
 
 ### Supuestos de uso (1 APM × 22 días hábiles/mes)
 
@@ -586,8 +652,8 @@ Derivados de un APM que visita **8 médicos/día** (~176 visitas/mes):
 
 | Servicio | Unidad | Precio |
 |---|---|---|
-| Bedrock — Claude Opus 4.6 (input) | 1M tokens | $5.00 |
-| Bedrock — Claude Opus 4.6 (output) | 1M tokens | $25.00 |
+| Bedrock — Claude Sonnet 5 (input) | 1M tokens | $3.00 |
+| Bedrock — Claude Sonnet 5 (output) | 1M tokens | $15.00 |
 | Bedrock — Nova Sonic 2 (input speech) | 1M tokens | $0.33 |
 | Bedrock — Nova Sonic 2 (output speech) | 1M tokens | $2.75 |
 | Bedrock — Nova 2 Lite (summarize) | 1M input / 1M output | [pricing](https://aws.amazon.com/bedrock/pricing/) |
@@ -609,45 +675,59 @@ Tamaño típico de un prompt al Text Agent: **~3.000 tokens input** (system prom
 
 | Servicio | Cálculo | Costo mensual |
 |---|---|---|
-| **Bedrock — Claude Opus 4.6 (chat)** | 110 consultas × 3.000 tokens input = 330K → $1.65<br>110 consultas × 400 tokens output = 44K → $1.10 | **$2.75** |
+| **Bedrock — Claude Sonnet 5 (chat)** | 110 consultas × 3.000 tokens input = 330K → $0.99<br>110 consultas × 400 tokens output = 44K → $0.66 | **$1.65** |
 | **Bedrock — Nova Sonic 2 (voz)** | 88 min × ~1.500 input tokens/min × 1.000 → 132K → $0.04<br>88 min × ~4.000 output tokens/min → 352K → $0.97 | **$1.01** |
 | **Bedrock — Nova 2 Lite (minutas)** | 88 minutas × 1.500 input tokens + 200 output → 132K in + 17.6K out | **~$0.03** |
 | **Bedrock AgentCore Runtime** | ~6.380 s × 0.5 vCPU ÷ 3.600 = 0.886 vCPU-hours × $0.0895 = $0.08<br>+ memoria ~1 GB × 1.77 h × $0.00945 = $0.02 | **~$0.10** |
 | **Bedrock AgentCore STM Memory** | ~110 consultas × 2 eventos = 220 events/mes / 1.000 × $0.25 | **~$0.06** |
 | **Amazon Transcribe** | 176 min × $0.024 | **$4.22** |
-| **DynamoDB on-demand** | ~660 reads dashboard + 330 reads tools + 88 writes ≈ 1.100 RRU + 100 WRU / 1M × $1.25 | **<$0.01** |
+| **DynamoDB (MinutasTable)** | ~88 writes + lecturas de minutas / 1M × $1.25 | **<$0.01** |
+| **Aurora + NAT (prorrateado)** | baseline fijo ~$76/mes ÷ N APMs (ver nota abajo) | **variable** |
 | **AWS Lambda** | ~4.500 invocaciones (API + WS + Transcribe + Summarize) × 500ms × 512MB | **<$0.05** |
 | **API Gateway HTTP** | 660 requests / 1M × $1.00 | **<$0.01** |
 | **API Gateway WebSocket** | ~3.850 messages + ~660 min conexión / 1M | **<$0.01** |
 | **S3 + CloudFront (frontend)** | ~50 MB SPA servido ~220 veces + ~90 MB audio uploads | **~$0.03** |
 | **Amazon Cognito** | 1 MAU dentro de los 10.000 gratis | **$0.00** |
-| **TOTAL** | | **~$8.26 / APM / mes** |
+| **TOTAL variable** | | **~$7.16 / APM / mes** |
+
+> **Costo total 1 APM** = baseline fijo (~$76) + variable (~$7.16) = **~$83/mes**. El baseline se amortiza al agregar más APMs.
+>
+> Precios con Sonnet 5 a tarifa estándar ($3/$15 por 1M input/output). Hasta el 31-ago-2026 aplica la tarifa promocional de lanzamiento ($2/$10), que baja el costo de chat a ~$1.10/APM.
 
 ### Desglose por componente
 
-| Componente | % del total | Observación |
+| Componente | % del costo variable | Observación |
 |---|---|---|
-| Amazon Transcribe | 51% | El pipeline de minutas de voz es el mayor driver de costo |
-| Claude Opus 4.6 (chat) | 33% | Bajaría ~80% con Claude Sonnet 4.6 o ~95% con Nova 2 Lite |
-| Nova Sonic 2 (voz) | 12% | Directamente proporcional al tiempo de conversación |
+| Amazon Transcribe | 59% | El pipeline de minutas de voz es el mayor driver del variable |
+| Claude Sonnet 5 (chat) | 23% | Bajaría con la promo de lanzamiento ($2/$10) o ~95% con Nova 2 Lite |
+| Nova Sonic 2 (voz) | 14% | Directamente proporcional al tiempo de conversación |
 | AgentCore Runtime + Memory | 2% | Serverless, solo cobra uso activo |
-| Resto (Lambda, API GW, DDB, S3/CF, Cognito) | <2% | Infraestructura serverless escala sin costos fijos |
+| Resto (Lambda, API GW, DynamoDB, S3/CF, Cognito) | <2% | Serverless, escala con el uso |
 
 ### Escalado
 
-Para una fuerza de ventas con **200 APMs activos**: **~$1.650/mes** total (~$55/día). Los cálculos escalan casi linealmente porque la arquitectura es 100% serverless y sin costos fijos de infraestructura.
+El costo total es **baseline fijo (~$76/mes) + ~$7.16/mes por APM**:
+
+| APMs | Fijo | Variable | Total/mes | Costo por APM |
+|---|---|---|---|---|
+| 1 | $76 | $7 | **~$83** | $83 |
+| 50 | $76 | $358 | **~$434** | ~$9 |
+| 200 | $76 | $1.432 | **~$1.508** | ~$8 |
+
+A mayor cantidad de APMs, el baseline fijo se amortiza y el costo por APM tiende al variable (~$8-9). El grueso del costo variable es serverless (Bedrock + Transcribe), que escala linealmente con el uso. Aurora Serverless v2 escalaría sus ACU con la carga concurrente, pero para cientos de APMs el piso de 0.5 ACU alcanza holgadamente.
 
 ### Optimizaciones disponibles
 
-- **Migrar el agente a Claude Sonnet 4.6** ($3/M input, $15/M output): reduce Bedrock ~40% del costo total
-- **Migrar el agente a Nova 2 Lite**: reduce Bedrock ~95% del costo total, impacto mínimo en calidad para queries factual
-- **Desactivar minutas de voz** o restringirlas a visitas priorizadas: elimina el 51% del costo (Transcribe)
-- **Batch inference** para generación de briefs async: 50% de descuento sobre inferencia on-demand
+- **Aurora con mínimo 0 ACU** (auto-pausa): baja el baseline fijo de ~$76 a ~$33/mes. La palanca más grande del costo fijo, a cambio de cold start en la primera consulta
+- **Tarifa promocional de Sonnet 5** ($2/$10 por 1M hasta 31-ago-2026): reduce el costo de chat ~33% mientras esté vigente
+- **Prompt caching** (hasta 90% de ahorro en input) y **batch processing** (50%): grandes palancas sobre el costo de Bedrock. El prompt caching aplica especialmente bien acá, porque el system prompt incluye el DDL completo y se repite en cada request
+- **Migrar el agente a Nova 2 Lite**: reduce Bedrock ~90% del costo, impacto mínimo en calidad para queries factuales
+- **Desactivar minutas de voz** o restringirlas a visitas priorizadas: elimina el ~59% del costo (Transcribe)
 - **Provisioned Throughput** para workloads predecibles: descuentos hasta 50% en Bedrock
 
 ### Notas y exclusiones
 
-- Precios **on-demand en us-east-1** consultados el 27-abr-2026. Otras regiones varían ±20-30% (ej. Sydney y Sao Paulo son más caras).
+- Precios **on-demand en us-east-1** consultados el 27-abr-2026 y revalidados el 08-jul-2026 en los dos drivers principales (Aurora Serverless v2 a $0,12/ACU-hora y Claude Sonnet 5 a $3/$15 estándar con promo $2/$10 vigente hasta el 31-ago-2026). Otras regiones varían ±20-30% (ej. Sydney y Sao Paulo son más caras).
 - Bedrock usa inference profiles con prefijo `us.` — el routing puede agregar pequeño sobrecosto cross-region.
 - **No incluye**: data transfer entre servicios AWS intra-región (despreciable), costo de desarrollo/mantenimiento, CloudWatch logs, X-Ray traces, ni WAF.
 - La **primera vez** que se deploya cada AgentCore agent, el CLI crea un bucket S3 (`bedrock-agentcore-codebuild-sources-<account>-<region>`) compartido entre todos tus agentes. Su costo de almacenamiento es despreciable (~$0.01/mes).

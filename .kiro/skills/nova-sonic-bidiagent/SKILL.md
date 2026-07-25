@@ -1,5 +1,9 @@
 ---
-inclusion: manual
+name: nova-sonic-bidiagent
+description: Guía de implementación de voice-to-voice con Nova Sonic y BidiAgent de Strands desplegado en AgentCore (WebSocket, container deployment, SigV4). Usar cuando se trabaje en el modo voz de PharmAssist, agentcore/agent.py con BidiAgent, o el frontend de voz (VoiceOverlay, websocket.ts).
+metadata:
+  category: development
+  complexity: advanced
 ---
 
 # Nova Sonic + BidiAgent en AgentCore — Guía de Implementación

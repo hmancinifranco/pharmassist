@@ -24,18 +24,18 @@ inclusion: always
 - **Framework Web**: Por definir en spec (candidatos: FastAPI, Flask, o serverless con Lambda)
 - **AI Agents**: Strands Agents SDK — agentes inteligentes con herramientas
 - **LLM**: Amazon Bedrock (Claude) via Strands
-- **Datos**: pandas para procesamiento de CSVs (MVP), DynamoDB para producción
+- **Datos**: Amazon Aurora PostgreSQL Serverless v2 (médicos, visitas, ventas, prescripciones, cartera, ciclos); Amazon DynamoDB solo para minutas de voz
 - **Validación**: Pydantic v2
 
 ## AWS Services
 
 - **AI/LLM**: Amazon Bedrock — Claude via Strands Agents SDK
 - **Compute**: AWS Lambda (funciones backend) o ECS Fargate
-- **Base de datos**: Amazon DynamoDB — tablas para médicos, visitas, ventas
-- **Storage**: Amazon S3 — CSVs fuente, assets estáticos del frontend
+- **Base de datos**: Amazon Aurora PostgreSQL Serverless v2 — médicos, visitas, ventas, prescripciones, cartera, ciclos (provisionada por `ProduccionPocStack`); Amazon DynamoDB solo para `MinutasTable` (minutas de voz)
+- **Storage**: Amazon S3 — assets estáticos del frontend
 - **CDN**: Amazon CloudFront — distribución del frontend SPA
 - **IaC**: AWS CDK en Python — toda la infraestructura como código
-- **Agentes**: Amazon Bedrock AgentCore — deploy y runtime de agentes Strands
+- **Agentes**: Amazon Bedrock AgentCore — deploy y runtime de agentes Strands (modo VPC para alcanzar Aurora)
 - **Auth**: AWS credentials via AWS CLI profiles o variables de entorno
 - **Observabilidad**: CloudWatch Logs + AgentCore Observability
 - **Región**: `us-east-1`
@@ -46,10 +46,10 @@ Usar siempre IDs de inference profile (con prefijo `us.`). Configurar via `.env`
 
 ```
 # Claude (Anthropic via Bedrock) — usar inference profile IDs
-us.anthropic.claude-opus-4-6-v1             # Claude Opus 4.6 (default recomendado)
+us.anthropic.claude-sonnet-5                # Claude Sonnet 5 (DEFAULT del proyecto)
+us.anthropic.claude-opus-4-6-v1             # Claude Opus 4.6 (más capaz, más caro)
 us.anthropic.claude-sonnet-4-6              # Claude Sonnet 4.6
-us.anthropic.claude-sonnet-4-20250514-v1:0  # Claude 4 Sonnet
-us.anthropic.claude-haiku-4-5-20251001-v1:0 # Claude Haiku 4.5
+us.anthropic.claude-haiku-4-5-20251001-v1:0 # Claude Haiku 4.5 (más económico)
 
 # Amazon Nova
 us.amazon.nova-premier-v1:0
@@ -70,11 +70,12 @@ us.amazon.nova-pro-v1:0
 - Removal policies para entornos efímeros
 
 ### Recursos CDK principales
-- **DynamoDB Tables**: médicos, visitas, ventas (importados desde CSV)
-- **Lambda Functions**: API endpoints, procesamiento de datos, carga de CSVs
-- **S3 Buckets**: frontend SPA, datos CSV fuente
+- **Aurora PostgreSQL Serverless v2**: médicos, visitas, ventas, prescripciones, cartera, ciclos (VPC + Aurora + Lambda de seed en `ProduccionPocStack`); datos sintéticos generados por una Lambda de seed
+- **DynamoDB Table**: `MinutasTable` (minutas de voz)
+- **Lambda Functions**: API endpoints, seed de datos sintéticos a Aurora
+- **S3 Buckets**: frontend SPA
 - **CloudFront Distribution**: CDN para el frontend
-- **IAM Roles**: roles mínimos para Lambda → DynamoDB, Lambda → Bedrock
+- **IAM Roles**: roles mínimos para Lambda → Aurora/DynamoDB, Lambda → Bedrock
 
 ### Patrón Lambda (layered architecture)
 ```
@@ -128,12 +129,13 @@ ddgs                    # Web search para brief de médicos
 
 ## Arquitectura de Agentes (Strands)
 
-Los agentes Strands son el core inteligente del sistema:
+El core inteligente del sistema es un **CodeAgent** de Strands con 5 tools:
 
-- **Agente Coordinador**: Orquesta los demás, interpreta consultas del APM
-- **Agente de CRM**: Busca médicos, perfil completo, talking points
-- **Agente de Visitas**: Historial, frecuencia vs cadencia, próximas visitas
-- **Agente de Ventas**: Tendencias, oportunidades por zona/producto
+- **`query_db`**: ejecuta SQL read-only generado por el LLM contra Aurora PostgreSQL (timeout 5s)
+- **`buscar_info_publica`**: búsqueda de información pública del médico
+- **`generar_brief`**: arma el brief de preparación de visita
+- **`obtener_minutas`**: recupera minutas de voz desde `MinutasTable` (DynamoDB)
+- **`generar_mensaje_cumpleanos`**: genera un mensaje de cumpleaños para un médico
 
 ### Patrón de agente con Strands
 ```python
@@ -141,10 +143,11 @@ from strands import Agent
 from strands.models import BedrockModel
 
 model = BedrockModel(
-    model_id="us.anthropic.claude-opus-4-6-v1",
+    model_id="us.anthropic.claude-sonnet-5",
     region_name="us-east-1",
-    temperature=0.3,
     max_tokens=4096,
+    # OJO: Sonnet 5 y otros modelos de razonamiento deprecaron `temperature`.
+    # Omitirlo para ser compatible; los que lo soportan usan su default.
 )
 
 agent = Agent(

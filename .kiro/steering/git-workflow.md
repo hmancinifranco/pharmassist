@@ -17,10 +17,22 @@ Después de completar cada tarea o grupo de tareas que resulte en un cambio func
 
 ### Cuándo NO hacer commit
 
-- Al editar archivos del spec (.kiro/specs/**/requirements.md, design.md, tasks.md)
-- Al editar archivos de steering (.kiro/steering/*.md)
-- Al editar .config.kiro
-- Durante la fase de diseño o planificación (solo documentación)
+- Durante la fase de diseño o planificación (solo documentación), salvo que el usuario pida explícitamente cerrar ese avance
+- Al editar `.kiro/settings/mcp.json` (contiene `AWS_PROFILE` real, ver regla de `.kiro` más abajo)
+- Al editar `.kiro/agents/*.md` (no se versionan)
+
+### Qué del `.kiro` folder SÍ se versiona
+
+A diferencia de código de aplicación, los cambios en `.kiro/specs/**`, `.kiro/steering/*.md`, `.kiro/skills/**` y `.kiro/hooks/*.json` **sí se commitean** — son parte del historial del proyecto (metodología spec-driven, guías de contexto, skills, automatizaciones). Reglas específicas:
+
+- `.kiro/specs/**` — commitear junto con el código que implementan, o en un commit `docs` dedicado si el spec avanza sin código todavía (requirements/design)
+- `.kiro/steering/*.md` — commitear cuando se agregan, editan o eliminan reglas de steering
+- `.kiro/skills/**/SKILL.md` — commitear como cualquier otro archivo de skill
+- `.kiro/hooks/*.json` — commitear cuando se crean o modifican hooks
+- `.kiro/settings/mcp.json` **NO se commitea** — contiene `AWS_PROFILE` real y configuración local de MCP servers. Está en `.gitignore`
+- `.kiro/agents/*.md` **NO se commitean** — quedan como configuración local, están en `.gitignore`
+- `.kiro/kiro-aws-blueprint/` **NO se commitea** — repo de referencia externo, está en `.gitignore`
+- Revisar `git diff --staged` con especial atención cuando se stagea `.kiro/` — verificar que ningún archivo nuevo dentro de specs/steering/skills/hooks haya introducido ARNs, account IDs o profile names (aplica el checklist de `security-review.md`)
 
 ### Formato del mensaje de commit
 
@@ -66,7 +78,9 @@ checkpoint: MVP completo antes de migración a AgentCore
 - NO commitear `.env`, `.env.local`, ni `.bedrock_agentcore.yaml` (tienen ARNs con account IDs)
 - NO commitear `node_modules/`, `.venv/`, `__pycache__/`, `cdk.out/`, `dist/`
 - NO commitear `infrastructure/cdk.context.json` (contiene AWS account ID)
+- NO commitear `.kiro/settings/mcp.json` ni `.kiro/agents/*.md` (ver detalle arriba)
 - SÍ commitear `.env.example` actualizado (sin secrets reales)
+- SÍ commitear `.kiro/specs/**`, `.kiro/steering/*.md`, `.kiro/skills/**`, `.kiro/hooks/*.json`
 - Stagear archivos explícitamente (`git add <files>`), evitar `git add .` en flujos productivos
 - Revisar `git diff --staged` antes de commitear
 - No rebasear branches que ya fueron pusheadas y compartidas

@@ -1,5 +1,9 @@
 ---
-inclusion: always
+name: deployment
+description: Guía de build, deploy y configuración de PharmAssist (CDK, AgentCore, .env, permisos IAM). Usar cuando se haga cdk deploy, agentcore deploy, se configuren variables de entorno, o se preparen builds de producción del frontend/backend.
+metadata:
+  category: deployment
+  complexity: intermediate
 ---
 
 # Build, Deploy y Configuración
@@ -47,7 +51,15 @@ AGENTCORE_REGION=us-east-1
 # Leave empty to use local Strands agent (default for local dev).
 # AGENTCORE_AGENT_ARN=arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/agent-XXXXX
 
-# === Datos ===
+# === Datos (Aurora PostgreSQL — ProduccionPocStack) ===
+DB_SECRET_ARN=arn:aws:secretsmanager:us-east-1:ACCOUNT:secret:xxx
+POC_AURORA_ENDPOINT=xxx.cluster-xxx.us-east-1.rds.amazonaws.com
+POC_AURORA_SECRET_ARN=arn:aws:secretsmanager:us-east-1:ACCOUNT:secret:xxx
+POC_VPC_ID=vpc-xxxxxxxxx
+POC_SEED_LAMBDA_ARN=arn:aws:lambda:us-east-1:ACCOUNT:function:xxx
+
+# === Minutas de voz (DynamoDB) ===
+MINUTAS_TABLE_NAME=xxx
 DATA_DIR=../data
 ```
 
@@ -90,7 +102,7 @@ agentcore invoke --dev '{"prompt": "¿Qué médicos tengo en Belgrano?"}'
 - Python 3.12+
 - AWS CLI configurado (`aws configure` o `AWS_PROFILE` en .env)
 - Acceso a Bedrock habilitado (Console → Model access → habilitar Claude)
-- Los CSVs de datos en el directorio `data/`
+- `ProduccionPocStack` desplegado (Aurora + VPC + Lambda de seed) y datos sintéticos cargados
 - `bedrock-agentcore-starter-toolkit` instalado (`pip install bedrock-agentcore-starter-toolkit`)
 
 ## Deploy con CDK (infraestructura)
@@ -127,11 +139,12 @@ cdk destroy --all --profile $AWS_PROFILE --region $AWS_REGION
 - Un solo stack (salvo que se excedan 500 recursos o multi-región)
 - Tags automáticos via CDK Aspects (TAG_PROJECT, TAG_ENVIRONMENT, TAG_OWNER)
 - Removal policies: DESTROY para dev, RETAIN para prod
-- Outputs del stack exportan ARNs y nombres de tablas DynamoDB
+- Outputs del stack exportan ARNs, el secret de Aurora (`DB_SECRET_ARN`) y nombres de recursos
 - Usar los outputs del CDK como `-env` flags en agentcore deploy
 
 ### Recursos CDK esperados
-- DynamoDB tables (médicos, visitas, ventas)
+- Aurora PostgreSQL Serverless v2 + VPC + Lambda de seed (`ProduccionPocStack`)
+- DynamoDB table (`MinutasTable`, minutas de voz)
 - Lambda functions (API, procesamiento)
 - S3 bucket (frontend SPA)
 - CloudFront distribution
@@ -155,10 +168,7 @@ agentcore configure \
 agentcore deploy -auc \
   -env BEDROCK_MODEL_ID=$BEDROCK_MODEL_ID \
   -env AWS_REGION=$AWS_REGION \
-  -env MEDICOS_TABLE_NAME=$MEDICOS_TABLE_NAME \
-  -env VISITAS_TABLE_NAME=$VISITAS_TABLE_NAME \
-  -env VENTAS_TABLE_NAME=$VENTAS_TABLE_NAME \
-  -env PLANIFICADAS_TABLE_NAME=$PLANIFICADAS_TABLE_NAME \
+  -env DB_SECRET_ARN=$DB_SECRET_ARN \
   -env MINUTAS_TABLE_NAME=$MINUTAS_TABLE_NAME
 
 # 3. Test en cloud
@@ -179,6 +189,7 @@ agentcore destroy
 - `agentcore` CLI NO soporta `--profile`. Usar `export AWS_PROFILE=...` antes
 - `agentcore` CLI NO persiste env vars entre deploys. SIEMPRE incluir `-env` flags
 - Omitir `-env` flags causa que el agente use valores por defecto incorrectos
+- El agente se despliega en **modo VPC** para alcanzar Aurora (subnets del cluster de `ProduccionPocStack`)
 - Default deployment usa `direct_code_deploy` (no requiere Docker)
 - Región default es `us-west-2`, especificar con `-r` si se usa otra
 - Configuración se guarda en `.bedrock_agentcore.yaml`
@@ -213,13 +224,15 @@ if __name__ == "__main__":
 ### Para el agente (AgentCore execution role)
 - `bedrock:InvokeModel` — llamar a Claude via Strands
 - `bedrock:InvokeModelWithResponseStream` — streaming
-- `dynamodb:GetItem`, `dynamodb:Query`, `dynamodb:Scan` — leer datos
-- `dynamodb:PutItem`, `dynamodb:UpdateItem` — escribir datos (si aplica)
+- `secretsmanager:GetSecretValue` — leer el secret de Aurora (`DB_SECRET_ARN`)
+- Acceso de red a Aurora vía VPC (ENIs en las subnets del cluster)
+- `dynamodb:GetItem`, `dynamodb:Query`, `dynamodb:Scan` — leer minutas (`MinutasTable`)
+- `dynamodb:PutItem`, `dynamodb:UpdateItem` — escribir minutas (si aplica)
 
 ### Para Lambda functions
-- `dynamodb:*` sobre las tablas del proyecto
+- `dynamodb:*` sobre `MinutasTable`
+- `secretsmanager:GetSecretValue` + acceso VPC a Aurora (si la Lambda consulta la base)
 - `bedrock:InvokeModel` (si Lambda llama a Bedrock directamente)
-- `s3:GetObject` (si lee CSVs de S3)
 
 ### Para CDK deploy
 - `cloudformation:*`, `iam:*`, `lambda:*`, `dynamodb:*`, `s3:*`, `cloudfront:*`
@@ -241,10 +254,11 @@ if __name__ == "__main__":
 | `AGENTCORE_AGENT_ARN` | Backend (FastAPI proxy) | `arn:aws:bedrock-agentcore:us-east-1:ACCOUNT:runtime/agent-XXXXX` |
 | `AGENTCORE_REGION` | Backend, AgentCore CLI | `us-east-1` |
 | `DATA_DIR` | Backend, scripts de carga | `.` |
-| `MEDICOS_TABLE_NAME` | Agente, Lambda | CDK output |
-| `VISITAS_TABLE_NAME` | Agente, Lambda | CDK output |
-| `VENTAS_TABLE_NAME` | Agente, Lambda | CDK output |
-| `PLANIFICADAS_TABLE_NAME` | Agente, Lambda | CDK output |
+| `DB_SECRET_ARN` | Agente, Lambda | ProduccionPocStack output (secret de Aurora) |
+| `POC_AURORA_ENDPOINT` | Agente, Lambda | ProduccionPocStack output |
+| `POC_AURORA_SECRET_ARN` | Agente, Lambda | ProduccionPocStack output |
+| `POC_VPC_ID` | AgentCore (modo VPC), CDK | ProduccionPocStack output |
+| `POC_SEED_LAMBDA_ARN` | Scripts, referencia | ProduccionPocStack output |
 | `MINUTAS_TABLE_NAME` | Agente, Lambda | CDK output |
 | `API_URL` | Scripts, referencia | CDK output (API Gateway URL) |
 | `RDS_SECRET_ARN` | IngestionStack (CDK) | `arn:aws:secretsmanager:us-east-1:ACCOUNT:secret:xxx` |

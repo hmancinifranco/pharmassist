@@ -1,3 +1,11 @@
+---
+name: large-file-writes
+description: Regla obligatoria para escribir archivos grandes (specs, designs, tasks, system prompts, runbooks) en chunks incrementales para evitar fallos de "text null" en fsWrite. Usar antes de crear o reescribir cualquier archivo markdown/json de más de 150 líneas.
+metadata:
+  category: workflow
+  complexity: beginner
+---
+
 # Escritura de archivos grandes — regla obligatoria
 
 Aprendizaje del spec #7 (`workout-logging`): al intentar crear `requirements.md` (~370 líneas) en una sola llamada a `fsWrite`, el tool falló repetidamente con `text: null` en el payload. Quedé en retry loop varias veces antes de cambiar de estrategia. Lesson: **nunca escribir archivos grandes en una sola llamada**.
