@@ -1,13 +1,15 @@
 # Caso de estudio: De Demo a MLP — PharmAssist para la industria farmacéutica
 
-> Cómo convertir la demo actual de PharmAssist en un Minimum Lovable Product productivo capaz de responder preguntas de alto valor para Agentes de Propaganda Médica (APMs), cruzando múltiples fuentes de datos corporativas y externas de la industria farmacéutica, con latencias aceptables y una experiencia de usuario moderna.
+> Cómo convertir la implementación actual de PharmAssist en un Minimum Lovable Product productivo capaz de responder preguntas de alto valor para Agentes de Propaganda Médica (APMs), cruzando múltiples fuentes de datos corporativas y externas de la industria farmacéutica, con latencias aceptables y una experiencia de usuario moderna.
+
+> **Nota de revisión (jul-2026).** Este documento se escribió cuando la demo servía datos desde tres CSVs sintéticos en DynamoDB. Desde entonces la plataforma migró a **Amazon Aurora PostgreSQL con un CodeAgent que genera SQL**, y la capa semántica se resolvió en el system prompt en vez de una ontología o un grafo (ver [`decisions/0001-postgres-en-vez-de-ontologia.md`](decisions/0001-postgres-en-vez-de-ontologia.md)). Las secciones de punto de partida, arquitectura objetivo, carriles y fases se actualizaron a esa realidad. El análisis del dominio (fuentes, preguntas de valor, ingesta, Iceberg, carril async, latencias) se mantiene vigente.
 
 ## Índice
 
 - [El caso de estudio](#el-caso-de-estudio)
 - [Las 3 fuentes de datos de la industria pharma](#las-3-fuentes-de-datos-de-la-industria-pharma)
 - [Las preguntas que generan valor real](#las-preguntas-que-generan-valor-real)
-- [Por qué la demo actual no alcanza](#por-qué-la-demo-actual-no-alcanza)
+- [Qué falta para producción](#qué-falta-para-producción)
 - [Principios de diseño del MLP](#principios-de-diseño-del-mlp)
 - [Arquitectura objetivo](#arquitectura-objetivo)
 - [Los 3 carriles de respuesta](#los-3-carriles-de-respuesta)
@@ -23,9 +25,11 @@
 
 ## El caso de estudio
 
-La demo actual de PharmAssist usa un atajo didáctico: tres CSVs sintéticos (CRM, visitas, ventas) cargados directamente en DynamoDB, con un único APM (Peccy) y 12 médicos asignados. Sirve para validar la experiencia de usuario, el stack de agentes, el modo voz con Nova Sonic y la integración con AgentCore.
+La implementación actual de PharmAssist ya opera sobre el **modelo de datos real de un laboratorio**, con datos sintéticos: 21 tablas en Aurora PostgreSQL (~2M filas) que replican la estructura de su CRM interno más las tablas de auditoría de prescripciones, y un CodeAgent que genera SQL dinámicamente contra ese schema. El POC lo validó con 85,7% de respuestas correctas en menos de 6 segundos, incluyendo JOINs de 5-6 niveles.
 
-En un entorno productivo real de la industria farmacéutica, el escenario cambia en múltiples dimensiones simultáneamente. Este documento describe cómo evolucionar el diseño para soportar un laboratorio real con cientos de APMs, datos corporativos vivos consolidados desde múltiples fuentes, y preguntas de negocio que hoy ningún tablero resuelve.
+Eso resolvió la pregunta de fondo — *¿un agente conversacional puede responder sobre este modelo de datos?* — y dejó al descubierto la siguiente: **de dónde salen esos datos en producción**. Hoy los genera una Lambda de seed en una sola pasada. En un laboratorio real vienen de tres plataformas distintas, con cadencias de actualización distintas, y con volúmenes que crecen con el histórico.
+
+Este documento describe cómo cubrir esa brecha para soportar un laboratorio con cientos de APMs, datos corporativos vivos consolidados desde múltiples fuentes, y preguntas de negocio que hoy ningún tablero resuelve.
 
 ### Perfil del caso
 
@@ -161,39 +165,45 @@ Un sistema que intenta servir **las 3 categorías con la misma infraestructura**
 
 ---
 
-## Por qué la demo actual no alcanza
+## Qué falta para producción
 
-La demo usa DynamoDB como única fuente. Eso funciona para el set de preguntas de Peccy (12 médicos sintéticos) pero se quiebra en producción por 4 razones concretas:
+La implementación actual **sí hace joins** y **sí responde preguntas cross-source**: Aurora PostgreSQL resuelve los JOINs de 5-6 niveles del modelo, y las tablas de última milla ya traen las prescripciones cruzadas contra el CRM. Ese ya no es el problema.
 
-### 1. DynamoDB no hace joins
+Lo que falta es todo lo que está antes y después de la base de datos. Cuatro brechas concretas:
 
-Todas las preguntas de gran valor requieren cruzar 2 o 3 fuentes. DynamoDB no soporta joins nativamente, y cada camino alternativo tiene problemas:
+### 1. Los datos entran una sola vez, a mano
 
-- **Denormalizar en una sola tabla**: el tamaño explota porque habría que replicar las prescripciones por cada médico × cada producto foco × cada mercado. Además, cada fuente se actualiza en cadencias distintas (mensual CloseUp, quincenal/mensual IQVIA, diario el CRM interno), lo que hace muy costoso mantener la denormalización consistente.
-- **Hacer múltiples queries + hacer el join en la aplicación**: funciona para volúmenes chicos y relaciones simples. A escala de millones de prescripciones o para preguntas con varias dimensiones, esta estrategia deja de ser sostenible en latencia y en código.
-- **Limitar el alcance del producto a preguntas sin cruces**: implicaría renunciar precisamente a las preguntas de gran valor, que son el principal diferenciador del asistente sobre un dashboard tradicional.
+Hoy una Lambda de seed puebla Aurora en una pasada y ahí termina. No hay ingesta: nadie trae los datos del CRM del laboratorio, ni los archivos mensuales de prescripciones, ni los de ventas de mercado. Sin ese pipeline no hay producto, solo una demo con datos congelados.
 
-Por eso el diseño incorpora un engine SQL por encima del data lake. Es lo que permite servir las preguntas cruzadas sin sacrificar alcance ni UX.
+Esta es la brecha principal y es la que ocupa la mayor parte de este documento.
 
-### 2. DynamoDB no está diseñado para workloads analíticos sobre grandes volúmenes históricos
+### 2. Las tres fuentes cambian con frecuencias distintas y viven en plataformas distintas
 
-Este punto no es un tema de "DynamoDB es caro". Es un tema de propósito: la documentación oficial de AWS recomienda **no usar DynamoDB para workloads OLAP** y derivar esos workloads a servicios pensados para analytics.
+Cada fuente está en su propia plataforma (típicamente SQL Server, Synapse o Databricks), fuera de AWS, y con su propia cadencia:
 
-- El whitepaper de AWS [Best Practices for Migrating from RDBMS to DynamoDB → Unsuitable workloads](https://docs.aws.amazon.com/whitepapers/latest/best-practices-for-migrating-from-rdbms-to-dynamodb/unsuitable-workloads.html) lista las aplicaciones **OLAP** como uno de los casos de uso que no conviene servir con DynamoDB por su modelo de datos dimensional y la falta de joins entre fact y dimension tables.
-- La guía [Evaluate your DynamoDB table usage patterns](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/CostOptimization_TableUsagePatterns.html) recomienda explícitamente **exportar a S3 y consultar con Athena** cuando se necesitan queries analíticas sobre tablas grandes, en lugar de hacer Scans dentro de DynamoDB.
-- El post del AWS Database Blog [SQL to NoSQL: Modernizing data access layer with Amazon DynamoDB](https://aws.amazon.com/blogs/database/sql-to-nosql-modernizing-data-access-layer-with-amazon-dynamodb/) sugiere derivar las "complex analytical queries or large-scale reporting needs" a **Amazon Redshift, Amazon Athena, o Amazon SageMaker Lakehouse**.
+- **CRM interno** del laboratorio: cambia varias veces por día
+- **Prescripciones (CloseUp)**: actualiza mensual o quincenalmente
+- **Ventas de mercado (IQVIA)**: actualiza mensualmente
 
-Con una fact table de prescripciones con decenas o centenas de millones de filas, y con la necesidad de cruzar fuentes heterogéneas en query time, el fit natural es un lake queryable (S3 + Iceberg + Athena o un warehouse tipo Redshift), no DynamoDB. Como consecuencia derivada, el costo también termina siendo menor: storage columnar sobre S3 con compresión y partitioning es órdenes de magnitud más barato que la misma tabla en DynamoDB. Pero el motivo principal de la decisión es de diseño, no de precio: **es servir cada tipo de query con el servicio que mejor se ajusta**.
+Un único pipeline que refresca todo cada noche es subóptimo: hace trabajo de más sobre las fuentes lentas y llega tarde a la rápida. Se necesitan pipelines separados, cada uno con su cadencia.
 
-### 3. Las tres fuentes cambian con frecuencias distintas
+### 3. Una instancia OLTP no es el lugar del histórico analítico
 
-- CRM interno del laboratorio cambia varias veces por día
-- CloseUp actualiza mensual o quincenalmente
-- IQVIA actualiza mensualmente
+Aurora es la elección correcta para el **carril operativo**: la cartera del APM, su agenda, los productos foco del ciclo. Ese acceso es transaccional, acotado por `apm_id`, y Postgres lo sirve en milisegundos.
 
-Un único pipeline que refresca todo cada noche es subóptimo. Necesitamos pipelines separados con frecuencias propias.
+Pero las preguntas de gran valor barren histórico: evolución trimestral sobre varios ciclos, share por mercado, comparativos año contra año. Con el histórico completo de prescripciones y ventas de un laboratorio real —decenas o centenas de millones de filas, creciendo cada mes— mezclar ese barrido analítico con la carga operativa en la misma instancia termina castigando a las dos:
 
-### 4. El UX de las preguntas complejas se decide, no se asume
+- El escaneo analítico compite por ACUs con las consultas operativas de 200-500 APMs concurrentes.
+- Guardar todo el histórico en almacenamiento de una base transaccional es sensiblemente más caro que en almacenamiento columnar comprimido sobre S3.
+- Postgres no da versionado ni *time travel* sobre las cargas mensuales, que es justamente lo que se necesita para auditar "qué decía el dato de marzo cuando lo cargamos".
+
+De ahí la separación por carriles: **Aurora para lo operativo, lake queryable para lo analítico**. No es reemplazar Aurora, es dejar de pedirle algo para lo que no está.
+
+### 4. La trazabilidad del dato termina en la base
+
+El panel "¿De dónde salió esto?" muestra el SQL que ejecutó el agente, que es la mitad de la historia. En producción el APM (y sobre todo el equipo de datos del laboratorio) va a querer saber de qué carga vino ese número y de qué fecha. Eso requiere linaje desde la ingesta, no solo desde la query.
+
+### 5. El UX de las preguntas complejas se decide, no se asume
 
 Cuando el agente cruza CRM interno + CloseUp + IQVIA para producir un ranking inteligente de médicos a visitar, el tiempo de respuesta depende del motor analítico, de cómo se descomponga la pregunta, del modelo de fundación y del volumen de datos. El [blog oficial de AWS sobre text-to-SQL con Amazon Bedrock](https://aws.amazon.com/blogs/machine-learning/text-to-sql-solution-powered-by-amazon-bedrock/) reporta ~3-5 segundos para queries SQL **simples** sobre Redshift con GraphRAG; para queries complejas el blog no publica un número y aclara que depende del caso.
 
@@ -240,7 +250,7 @@ Las 3 fuentes se replican a S3 como **tablas Iceberg independientes**. No las pr
 
 ### 4. Pre-computación agresiva pero selectiva
 
-Las preguntas de medio y gran valor que sabemos que el APM hace **todos los días** se materializan en Redis/DynamoDB durante el batch nocturno. Así el 80% de las preguntas comunes responden en <500 ms. El 20% restante va ad-hoc a Athena.
+Las preguntas de medio y gran valor que sabemos que el APM hace **todos los días** se materializan en Redis (o como tablas agregadas en Aurora) durante el batch nocturno. Así el 80% de las preguntas comunes responden en <500 ms. El 20% restante va ad-hoc a Athena.
 
 ### 5. Experiencia async para análisis profundos
 
@@ -273,8 +283,9 @@ flowchart TB
         GLUE["Glue Catalog<br/>+ ETL"]
     end
 
-    subgraph Hot["⚡ Hot path"]
-        DDB[("DynamoDB<br/>cartera + agenda + foco")]
+    subgraph Hot["⚡ Hot path (operativo — ya implementado)"]
+        AUR[("Aurora PostgreSQL<br/>cartera + agenda + foco<br/>+ ciclos")]
+        DDBM[("DynamoDB<br/>minutas de voz")]
     end
 
     subgraph Warm["♨️ Warm path"]
@@ -290,7 +301,7 @@ flowchart TB
     end
 
     subgraph Agent["🤖 AgentCore + Strands"]
-        AGT["Text Agent + semantic_layer.yaml"]
+        AGT["CodeAgent · query_db (SQL)<br/>+ capa semántica en el prompt"]
     end
 
     CRMINT --> DMS1 --> S3CRM
@@ -302,11 +313,12 @@ flowchart TB
     S3IQV --> GLUE
     MAESTROS --> GLUE
 
-    GLUE -->|nightly refill| DDB
+    GLUE -->|nightly upsert operativo| AUR
     GLUE -->|nightly materialize KPIs| REDIS
     GLUE --> ATHENA
 
-    AGT -->|carril instantáneo| DDB
+    AGT -->|carril instantáneo · query_db SQL| AUR
+    AGT -->|minutas| DDBM
     AGT -->|carril conversacional| REDIS
     AGT -->|carril conversacional fallback| ATHENA
     AGT -->|carril análisis profundo| SQS
@@ -323,7 +335,7 @@ flowchart TB
 
     class CRMINT,CUP,IQVIA ext
     class DMS1,DMS2,DMS3,ATHENA,GLUE aws
-    class S3CRM,S3CUP,S3IQV,MAESTROS,DDB,REDIS data
+    class S3CRM,S3CUP,S3IQV,MAESTROS,AUR,DDBM,REDIS data
     class AGT agent
     class SQS,WORKER,STORE,SNS async
 ```
@@ -335,12 +347,15 @@ flowchart TB
 | **AWS DMS** (x3) | Replica cada fuente externa a S3 con su propia cadencia | Ingesta nocturna/mensual |
 | **S3 + Apache Iceberg** | Almacena las 3 fuentes como tablas independientes, versionables, con schema evolution | Source of truth analítico |
 | **Glue Data Catalog + ETL** | Indexa metadata, normaliza y prepara las tablas curadas | Una vez al día post-ingesta |
-| **DynamoDB** | Vista materializada hot de cartera, agenda, productos foco, últimas visitas | Queries del carril instantáneo |
+| **Aurora PostgreSQL** *(ya implementado)* | Base operativa: cartera, agenda, productos foco, ciclos, última milla. El agente la consulta con SQL generado | Queries del carril instantáneo |
+| **DynamoDB** | Solo minutas de voz | Lectura/escritura de minutas |
 | **ElastiCache Redis** | KPIs pre-computados por APM (rankings, alertas, evolución propia) | Queries del carril conversacional |
 | **Athena** | Engine SQL serverless sobre el lake, queryea las 3 fuentes con joins vía maestros | Carril conversacional (fallback) + carril async |
 | **SQS + Worker (Lambda/Fargate)** | Cola de análisis profundos + worker que ejecuta queries multi-fuente largas | Carril async |
 | **SNS / WebSocket push** | Notifica al APM cuando el análisis profundo termina | Cierre del carril async |
-| **AgentCore Runtime** | Ejecuta el agente Strands con el LLM configurado vía Bedrock | Toda pregunta del APM |
+| **AgentCore Runtime** *(ya implementado)* | Ejecuta el CodeAgent Strands con el LLM configurado vía Bedrock, en modo VPC para alcanzar Aurora | Toda pregunta del APM |
+
+> **Qué de esto ya existe.** Aurora, el CodeAgent con `query_db` y AgentCore están desplegados y validados. El lake (S3 + Iceberg + Glue Catalog), la simulación de las fuentes externas y la ingesta con DMS también están implementados como specs cerrados, aunque todavía no alimentan al agente. Lo que falta es conectar el lake al agente (carril conversacional), la capa de KPIs pre-computados y el carril async.
 
 
 ---
@@ -353,9 +368,11 @@ Cada pregunta del APM se resuelve por uno de estos 3 carriles. **El agente Stran
 
 **Para qué**: preguntas operativas y de bajo valor. Lookup por ID, filtro simple sobre cartera, últimas visitas.
 
-**Cómo funciona**: el tool del agente lee directamente de DynamoDB, que tiene una vista pre-denormalizada del sistema interno (cartera, agenda, productos foco del APM, últimas visitas por médico). Refresh nocturno.
+**Cómo funciona**: el agente genera SQL y lo ejecuta con `query_db` contra Aurora PostgreSQL, que mantiene el estado operativo del APM (cartera, agenda, productos foco del ciclo, última milla). Los índices parciales sobre `apm_id` con `WHERE inactivo = false` hacen que estas consultas sean lookups acotados, no barridos. En producción, un upsert nocturno desde el lake mantiene Aurora al día con el CRM.
 
-**Streaming sincrónico**: el agente streamea la respuesta por WebSocket como en la demo actual. El APM ve la respuesta aparecer palabra por palabra.
+**Este carril ya está implementado y en funcionamiento.**
+
+**Streaming sincrónico**: el agente streamea la respuesta por WebSocket. El APM ve la respuesta aparecer palabra por palabra, con el panel de procedencia mostrando el SQL exacto.
 
 **Ejemplos de preguntas**:
 
@@ -408,7 +425,7 @@ Cada pregunta del APM se resuelve por uno de estos 3 carriles. **El agente Stran
 
 | Dimensión | Instantáneo | Conversacional | Análisis profundo (async) |
 |---|---|---|---|
-| Storage | DynamoDB | Redis + Athena | Athena sobre Iceberg |
+| Storage | Aurora PostgreSQL | Redis + Athena | Athena sobre Iceberg |
 | Latencia data | <30 ms | 10 ms – 3 s | 10 – 50 s |
 | Latencia total percibida | 2–3 s | 2–5 s | Inmediato (ack) + 15–60 s (notificación) |
 | Conexión | WS streaming sync | WS streaming sync | WS ack + SNS push async |
@@ -656,22 +673,23 @@ El `semantic_layer.yaml` se carga al iniciar el agente y se pasa como parte de s
 
 ### Por qué YAML es suficiente para el MLP
 
-Para el MLP, un `semantic_layer.yaml` inyectado al prompt resuelve la necesidad sin infraestructura extra: versionable en Git, fácil de editar por un ingeniero de datos, y el agente lo entiende sin preparación especial. La capa semántica como YAML es un patrón probado en agentes text-to-SQL recientes.
+Para el MLP, una capa semántica inyectada al prompt resuelve la necesidad sin infraestructura extra: versionable en Git, fácil de editar, y el agente la entiende sin preparación especial. Es un patrón probado en agentes text-to-SQL recientes.
 
-Cuando el archivo crezca mucho (por ejemplo, supere los ~50 KB, o aparezcan más de 3 fuentes con relaciones complejas entre sí), conviene evaluar migrar a un **grafo semántico queryable**. Esa es una etapa posterior del roadmap y se decide con métricas de uso reales.
+> **Estado actual: esto ya está implementado, en prosa y no en YAML.** La capa semántica vive hoy en `agentcore/prompts/system_prompt.py`, con el DDL completo, los 5 caminos de JOIN válidos, 10 reglas de negocio y queries canónicas de ejemplo. Funciona: el POC midió 85,7% de aciertos.
+>
+> Formalizarla en un `semantic_layer.yaml` sigue teniendo sentido cuando entren las tres fuentes reales — un archivo estructurado es más fácil de mantener y validar que prosa, y lo puede editar un ingeniero de datos sin tocar código Python. Pero es una **refactorización de algo que ya funciona**, no un bloqueante.
 
-Algunas opciones para cuando llegue ese momento:
+#### Sobre el grafo semántico: decisión tomada
 
-- **Amazon Neptune** — grafo gestionado por AWS, integra bien con el resto del stack. Es la opción obvia dentro de AWS pero agrega un costo fijo no trivial; hay que validar que el caso de uso justifica la inversión.
-- **Apache AGE** — extensión de PostgreSQL que agrega capacidades de grafo sobre una base Postgres estándar.
-- **Neo4j Community Edition** — open source, muy maduro en el mundo de grafos. Requiere operar una instancia (EC2 o ECS).
-- **JanusGraph** — grafo distribuido open source, corre sobre Cassandra/HBase. Más complejo pero escala horizontalmente.
+Una versión anterior de este documento planteaba migrar la capa semántica a un **grafo queryable** (Neptune, Apache AGE, Neo4j) cuando creciera. Esa decisión se evaluó en detalle y **se descartó**, y el razonamiento completo está en [`decisions/0001-postgres-en-vez-de-ontologia.md`](decisions/0001-postgres-en-vez-de-ontologia.md).
 
-El MLP no incluye ninguno de estos: YAML es un buen punto de partida. La decisión de migrar se posterga hasta que exista una métrica concreta que la justifique (tamaño del YAML, cantidad de fuentes, patrones de consulta que pidan navegación de grafo).
+En resumen: las preguntas del negocio son agregaciones sobre caminos de JOIN de profundidad **fija y conocida**, no traversals de profundidad variable, que es donde un grafo aporta. Y las relaciones de mayor valor (`Médico —prescribe[share]→ Marca`) **ya vienen pre-computadas** en las tablas de última milla, así que modelarlas como aristas agregaría una copia a sincronizar sin ganar capacidad de consulta.
 
-### Validación del YAML
+El ADR documenta cinco disparadores concretos que reabrirían la discusión — entre ellos, preguntas de similitud entre médicos por patrón de prescripción, y *entity resolution* difusa si entraran muchas más fuentes. Mientras ninguno se cumpla, el grafo no está en el camino a producción.
 
-Un paso a menudo ignorado: testear que el agente con la capa semántica responde bien las 12 preguntas de referencia. Se arma un test suite que corre contra el agente con prompts conocidos y chequea que genera el SQL correcto (o invoca el tool correcto). Este test corre antes de cada redeploy del `semantic_layer.yaml`.
+### Validación de la capa semántica
+
+Un paso a menudo ignorado: testear que el agente responde bien las preguntas de referencia. El repo ya tiene el andamiaje en `agentcore/evaluations/` (`run_eval.py` + `eval_questions.json`). Ese suite debe correr antes de cada redeploy que toque el system prompt o el schema, y es lo que convierte un cambio de prompt en algo verificable en vez de una apuesta.
 
 
 ---
@@ -805,7 +823,7 @@ Lo que sí conviene planificar desde el inicio son **objetivos de latencia por t
 
 | Tipo de pregunta | UX deseado | Fuente de datos típica | Cómo medir |
 |---|---|---|---|
-| Operativa / lookup directo | Respuesta percibida como inmediata, con streaming visible apenas llega la pregunta | DynamoDB u otra vista hot materializada | P50 y P95 de tiempo hasta el primer token (TTFT) y hasta el final de respuesta |
+| Operativa / lookup directo | Respuesta percibida como inmediata, con streaming visible apenas llega la pregunta | Aurora PostgreSQL con índices por `apm_id` | P50 y P95 de tiempo hasta el primer token (TTFT) y hasta el final de respuesta |
 | Conversacional con cache hit | Respuesta fluida, similar a una conversación natural | Redis con KPIs pre-computados | Hit rate del cache + P95 end-to-end |
 | Conversacional con cache miss | Tolerable con streaming y un prefacio natural del agente | Athena o Redshift sobre el lake | P95 de la query + P95 end-to-end |
 | Análisis profundo | Sincrónico con espera visible, o asincrónico con notificación al terminar | Athena con múltiples queries, o Redshift con agentes en paralelo | Tasa de éxito, P95 del job, tasa de abandono del APM antes del resultado |
@@ -832,50 +850,49 @@ El documento oficial de AWS sobre text-to-SQL reporta que queries SQL simples so
 
 Cada fase es **deployable y operable de forma independiente**, entrega valor medible al cliente, y permite validar asumptions antes de seguir. El camino completo son 5 fases de ~2-3 semanas cada una.
 
-### Fase 0 — Demo actual (ya implementada)
+### Fase 0 — Plataforma sobre el modelo de datos real ✅ completada
 
-- CSVs sintéticos → DynamoDB → Agent Strands
-- 1 APM (Peccy), 12 médicos
-- Stack AgentCore + modo voz Nova Sonic + frontend
-- **Valor**: mostrar capacidad técnica, alineación con el cliente sobre UX
+- **Aurora PostgreSQL Serverless v2** con las 21 tablas del modelo del laboratorio y ~2M filas sintéticas generadas por una Lambda de seed
+- **CodeAgent Strands** con `query_db`: el LLM genera SQL contra el schema completo, con rol read-only, validación de solo lectura y timeout de 5 s
+- Capa semántica (DDL + 5 caminos de JOIN + 10 reglas de negocio) en el system prompt
+- Stack AgentCore en modo VPC + modo voz Nova Sonic + frontend con data provenance
+- **Validado**: 85,7% de aciertos (12/14 preguntas) en menos de 6 s, con JOINs de 5-6 niveles
+- **Valor**: se probó que el enfoque conversacional resuelve el modelo de datos real del cliente, no una simplificación
 
-### Fase 1 — Ingesta del CRM interno a S3 Iceberg
+### Fase 1 — Lake e ingesta ✅ completada (sobre fuentes simuladas)
+
+**Qué se hizo**:
+- `DataSourcesStack`: VPC + RDS con schemas que **simulan** los tres warehouses externos (CRM, CloseUp, IQVIA), incluidas las tablas de última milla
+- `DataLakeStack`: bucket del lake + Glue Data Catalog + tablas Iceberg + workgroup de Athena
+- `IngestionStack`: DMS Serverless replicando RDS → S3 Parquet → Glue ETL → Iceberg
+- Tablas maestras de integración (producto, médicos, familia → marca CUP) con validación cross-source
+
+**Valor entregado**: el pipeline de ingesta existe y funciona de punta a punta. Queda pendiente **apuntarlo a las fuentes reales del cliente**, que es trabajo de credenciales y acuerdos de acceso más que de ingeniería.
+
+### Fase 2 — Conectar el lake al agente
 
 **Duración**: 2 semanas
 
 **Qué se hace**:
-- Configurar DMS con credenciales del sistema interno del cliente
-- Replicar las 15+ tablas del CRM interno a `s3://pharmassist-lake/crm/`
-- Glue Crawler descubre el schema y registra en Data Catalog
-- Athena queryea las tablas como prueba
-- Cargar tablas maestras (`maestro_integrador_producto`, `maestro_medicos`)
+- Glue ETL nocturno que hace *upsert* desde Iceberg a Aurora para mantener el estado operativo al día (reemplaza al seed de una sola pasada)
+- El agente sigue respondiendo el carril instantáneo con `query_db` contra Aurora, ahora con datos que se refrescan
+- Migración del usuario demo a APMs reales del cliente con sus carteras
+- Linaje: registrar de qué carga y de qué fecha proviene cada dato, y exponerlo en el panel de procedencia
 
-**Valor entregado**: los datos reales del cliente están en AWS y son queryeables. El equipo de datos del cliente valida que los datos llegaron bien.
+**Valor entregado**: el agente responde el **carril instantáneo** sobre datos que se actualizan solos. Primera demo "real" al cliente con sus propios APMs.
 
-### Fase 2 — Refill nocturno de DynamoDB + migración del agente a datos reales
-
-**Duración**: 2 semanas
-
-**Qué se hace**:
-- Glue ETL job nocturno que toma lo relevante de Iceberg y lo escribe en DynamoDB
-- Los 15 tools del agente que hoy leen de DynamoDB siguen funcionando sin cambios — apuntan a datos reales
-- Migración del usuario Peccy a APMs reales del cliente (con sus carteras)
-- Testing contra preguntas de bajo y medio valor
-
-**Valor entregado**: el agente responde preguntas del **carril instantáneo** con datos productivos. Primera demo "real" al cliente con sus propios APMs.
-
-### Fase 3 — Ingesta CloseUp + IQVIA + carril conversacional
+### Fase 3 — Carril conversacional sobre el lake
 
 **Duración**: 3 semanas
 
 **Qué se hace**:
-- Configurar ingesta mensual de CloseUp y IQVIA a S3 Iceberg
-- Construir `semantic_layer.yaml` con las 3 fuentes, métricas y queries canónicas
-- Agregar tools al agente que queryean Athena cross-source
+- Apuntar la ingesta mensual de CloseUp e IQVIA a las fuentes reales
+- Formalizar la capa semántica del prompt en `semantic_layer.yaml`, extendida a las 3 fuentes
+- Agregar al agente un tool que queryea Athena cross-source, **sin sacarle `query_db`**: el agente elige el carril según la pregunta (Aurora para lo operativo, Athena para el barrido histórico)
 - ElastiCache Redis para KPIs pre-computados por APM
-- Glue ETL nocturno que materializa los KPIs del carril conversacional
+- Glue ETL nocturno que materializa esos KPIs
 
-**Valor entregado**: el agente responde preguntas de **valor medio** (top prescriptores, EVO trimestral, rankings acotados). Este es el primer punto donde el agente hace cosas que un dashboard no.
+**Valor entregado**: el agente responde preguntas de **valor medio** (top prescriptores, EVO trimestral, rankings acotados) sobre histórico profundo, sin castigar la latencia del carril operativo. Este es el primer punto donde el agente hace cosas que un dashboard no.
 
 ### Fase 4 — Carril async para análisis profundo
 
@@ -943,17 +960,21 @@ Ninguna de estas palancas debería aplicarse antes del MLP. Todas se evalúan co
 
 ## Resumen ejecutivo
 
-El MLP productivo de PharmAssist para la industria farmacéutica argentina se construye sobre **tres pilares**:
+**Punto de partida.** La plataforma ya opera sobre el modelo de datos real del laboratorio: 21 tablas en Aurora PostgreSQL y un CodeAgent que genera SQL, validado con 85,7% de aciertos en menos de 6 s. El lake y la ingesta con DMS también están implementados, sobre fuentes simuladas. Lo que falta para producción no es la capacidad de responder, sino **alimentar el sistema con datos vivos** y separar la carga analítica de la operativa.
 
-**Pilar 1 — Data lake unificado**. Las 3 fuentes (sistema interno + CloseUp + IQVIA) replicadas a S3 Iceberg con cadencias independientes. Las tablas maestras de integración permiten los joins cross-source en query time. El lake es la fuente única de verdad analítica.
+Sobre eso, el MLP se construye en **tres pilares**:
+
+**Pilar 1 — Data lake unificado**. Las 3 fuentes (sistema interno + CloseUp + IQVIA) replicadas a S3 Iceberg con cadencias independientes. Las tablas maestras de integración permiten los joins cross-source en query time. El lake es la fuente única de verdad analítica, y alimenta a Aurora con un upsert nocturno para el carril operativo.
 
 **Pilar 2 — Carriles de respuesta con UX explícita por tipo de pregunta**. Las preguntas operativas se sirven con baja latencia y streaming visible; las planificadas de gran valor pueden responderse sincrónicamente con streaming o con un carril asincrónico que le avisa al APM cuando el análisis está listo. La elección entre un esquema Athena-first (Ruta A, más económico) o Redshift-first (Ruta B, siguiendo el [patrón oficial text-to-SQL de AWS](https://aws.amazon.com/blogs/machine-learning/text-to-sql-solution-powered-by-amazon-bedrock/)) es empírica y depende del mix real de preguntas y del UX deseado.
 
-**Pilar 3 — Capa semántica en el agente**. Un `semantic_layer.yaml` con entidades, métricas, queries canónicas y reglas de negocio, inyectado al system prompt. El LLM entiende productos foco, EVO trimestral, market share y cruces entre fuentes. Esto permite responder preguntas nuevas sin redeploy de código.
+**Pilar 3 — Capa semántica en el agente**. Entidades, métricas, queries canónicas y reglas de negocio inyectadas al system prompt. El LLM entiende productos foco, EVO trimestral, market share y cruces entre fuentes, y eso le permite responder preguntas nuevas sin redeploy de código. Hoy vive en prosa dentro del system prompt; formalizarla en YAML es una refactorización pendiente, no un bloqueante. **No es un grafo**, y la decisión está argumentada en el [ADR 0001](decisions/0001-postgres-en-vez-de-ontologia.md).
 
 **La arquitectura responde al dilema original** de cómo dar "insights on-the-go" a los APMs sin comprometer latencia ni flexibilidad. Las preguntas de bajo valor responden tan rápido como un dashboard. Las de gran valor ofrecen análisis que ningún dashboard puede dar, con una experiencia async que no obliga al usuario a esperar mirando una pantalla.
 
-**El camino a producción** es de ~12 semanas divididas en 5 fases. Cada fase entrega valor medible y permite al cliente validar asumptions antes de comprometer la siguiente inversión. La capa semántica como ontología queryable es el componente que permite al agente responder preguntas nuevas sin redeploy, y es el que debe cuidarse con más atención durante la evolución del producto.
+**El camino a producción** son 5 fases, de las cuales las dos primeras ya están completadas (plataforma sobre el modelo real, y lake + ingesta sobre fuentes simuladas). Quedan ~8 semanas de trabajo: conectar el lake al agente, el carril conversacional, el carril async y el hardening. Cada fase entrega valor medible y permite al cliente validar supuestos antes de comprometer la siguiente inversión.
+
+La capa semántica es el componente que permite al agente responder preguntas nuevas sin redeploy, y es el que debe cuidarse con más atención durante la evolución del producto.
 
 ---
 
@@ -966,3 +987,10 @@ El MLP productivo de PharmAssist para la industria farmacéutica argentina se co
 - [Amazon Bedrock AgentCore](https://aws.amazon.com/bedrock/agentcore/)
 - [CloseUp Solutions](https://www.closeupsolutions.com/) — datasets de prescripciones
 - [IQVIA](https://www.iqvia.com/) — datasets de ventas de mercado farmacéutico
+
+### Documentos relacionados del repo
+
+- [`data-model.md`](data-model.md) — el modelo relacional actual: 21 tablas, relaciones y reglas de negocio
+- [`decisions/0001-postgres-en-vez-de-ontologia.md`](decisions/0001-postgres-en-vez-de-ontologia.md) — por qué la capa de datos es relacional y no un grafo
+- [`specs-roadmap.md`](specs-roadmap.md) — estado de cada spec, con las notas de cierre de los que ya están completos
+- [`research-external-schemas.md`](research-external-schemas.md) — schemas de las 3 fuentes y las 15 preguntas priorizadas por el cliente
