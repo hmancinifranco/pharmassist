@@ -94,7 +94,7 @@ CICLO_ACTUAL = get_ciclo_actual_id()
 )
 
 model = BedrockModel(
-    model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
+    model_id="us.anthropic.claude-sonnet-5",  # via BEDROCK_MODEL_ID
     region_name="us-east-1",
 )
 
