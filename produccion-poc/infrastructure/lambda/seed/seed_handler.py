@@ -13,6 +13,7 @@ Environment variables:
 
 import json
 import os
+import secrets
 import time
 import ssl
 from pathlib import Path
@@ -162,6 +163,14 @@ def _execute_ddl_indexes_and_grants(conn) -> None:
             index_section.append(line)
 
     sql_text = "\n".join(index_section)
+
+    # El DDL declara el usuario read-only con un password placeholder para que el
+    # archivo sea versionable. Se reemplaza acá por uno aleatorio: nadie necesita
+    # conocerlo (el agente entra con las credenciales del secret de Aurora), así
+    # que no hace falta persistirlo.
+    random_password = secrets.token_urlsafe(32)
+    sql_text = sql_text.replace("readonly_password_placeholder", random_password)
+
     statements = [s.strip() for s in sql_text.split(";") if s.strip()]
 
     cursor = conn.cursor()
@@ -171,7 +180,9 @@ def _execute_ddl_indexes_and_grants(conn) -> None:
             continue
         try:
             cursor.execute(stmt + ";")
-            print(f"[IDX] OK: {stmt[:70]}...")
+            # No logueamos la sentencia del CREATE USER para no filtrar el password.
+            safe_preview = "CREATE USER codeagent_readonly ..." if "CREATE USER" in stmt else f"{stmt[:70]}..."
+            print(f"[IDX] OK: {safe_preview}")
         except Exception as e:
             print(f"[IDX] Warning: {e}")
     cursor.close()

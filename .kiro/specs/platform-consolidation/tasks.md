@@ -171,7 +171,7 @@ Consolidación de la plataforma PharmAssist: migración de endpoints del dashboa
   - Ejecutar: `make seed-peccy` y verificar output exitoso
   - Validar en Cognito Console que el atributo custom está presente
 
-- [x] 11. Deploy CDK stack a AWS (CREATE fresh — account 709578350924)
+- [x] 11. Deploy CDK stack a AWS (CREATE fresh — account <ACCOUNT_ID>)
   - [x] 11.1 Ejecutar `cdk deploy` del PharmAssistStack COMPLETO desde cero
     - Este es un CREATE (no update) del stack. Crea todos los recursos from scratch:
       - Cognito User Pool + Identity Pool
@@ -249,7 +249,7 @@ Consolidación de la plataforma PharmAssist: migración de endpoints del dashboa
 
 ## Target Account & Region
 
-- **Account**: `709578350924`
+- **Account**: `<ACCOUNT_ID>`
 - **Region**: `us-east-1`
 - El **PharmAssistStack** se crea desde cero (CREATE, no UPDATE de un stack existente)
 - Todos los deploys (CDK, AgentCore text agent, BidiAgent, frontend) apuntan a esta cuenta/región

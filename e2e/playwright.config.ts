@@ -6,7 +6,8 @@ export default defineConfig({
   expect: { timeout: 15000 },
   fullyParallel: false,
   use: {
-    baseURL: process.env.APP_URL || 'https://da5wlutxahcar.cloudfront.net',
+    // Definir APP_URL con la URL de CloudFront del stack (output CloudFrontDomain).
+    baseURL: process.env.APP_URL,
     screenshot: 'on',
     trace: 'on-first-retry',
   },

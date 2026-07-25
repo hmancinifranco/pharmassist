@@ -25,13 +25,15 @@ help: ## Mostrar esta ayuda
 	@echo "  1. make check-prereqs         (verifica Docker, CDK, toolkit, AWS CLI)"
 	@echo "  2. make bootstrap             (instala dependencias Python/Node)"
 	@echo "  3. make cdk-bootstrap         (cdk bootstrap la primera vez en la cuenta)"
-	@echo "  4. make seed                  (usuarios Cognito + CSVs)"
-	@echo "  5. make deploy-all            (deploy completo: CDK → agents → frontend)"
+	@echo "  4. make deploy-all            (deploy completo: Aurora → CDK → agents → frontend)"
+	@echo "  5. make seed                  (puebla Aurora + crea usuario Peccy en Cognito)"
 	@echo ""
 	@echo "  O paso a paso:"
-	@echo "    make deploy-infra           (CDK stack)"
-	@echo "    make env-from-outputs       (escribe outputs a .env)"
-	@echo "    make deploy-text-agent      (Text Agent a AgentCore)"
+	@echo "    make deploy-data-layer      (ProduccionPocStack: VPC + Aurora + seed Lambda)"
+	@echo "    make deploy-infra           (PharmAssistStack principal)"
+	@echo "    make env-from-outputs       (escribe outputs de ambos stacks a .env)"
+	@echo "    make seed                   (puebla Aurora + usuario Peccy)"
+	@echo "    make deploy-text-agent      (CodeAgent a AgentCore, VPC mode)"
 	@echo "    make deploy-bidi-agent      (BidiAgent de voz)"
 	@echo "    make deploy-frontend        (build + S3 + CloudFront)"
 	@echo ""
@@ -64,7 +66,7 @@ check-prereqs: ## Verificar herramientas requeridas (docker, cdk, agentcore, aws
 	@echo "  ✓ Región: $(AWS_REGION)"
 	@echo ""
 	@echo "IMPORTANTE: Antes de deployar, verificá en Bedrock Console → Model access:"
-	@echo "  - anthropic.claude-opus-4-6 (inference profile us.anthropic.claude-opus-4-6-v1)"
+	@echo "  - anthropic.claude-sonnet-5 (inference profile us.anthropic.claude-sonnet-5)"
 	@echo "  - amazon.nova-2-sonic-v1:0"
 	@echo "  - amazon.nova-2-lite-v1:0 (para summarize de minutas)"
 
@@ -93,8 +95,16 @@ cdk-bootstrap: ## Ejecutar 'cdk bootstrap' (solo la primera vez en cada cuenta/r
 # Infrastructure deploy
 # ----------------------------------------------------------------------------
 
+.PHONY: deploy-data-layer
+deploy-data-layer: ## Deploy de la capa de datos (ProduccionPocStack: VPC + Aurora + seed Lambda) y escribe outputs POC_* a .env
+	@echo "→ Deployando ProduccionPocStack (VPC + Aurora Serverless v2 + seed Lambda, ~8-12 min)..."
+	@cd produccion-poc/infrastructure && python3 -m venv .venv && . .venv/bin/activate && pip install -q -r requirements.txt \
+		&& cdk deploy ProduccionPocStack --profile $(AWS_PROFILE) --require-approval never
+	@echo "→ Escribiendo outputs POC_* a .env..."
+	@bash scripts/env-from-outputs.sh || true
+
 .PHONY: deploy-infra
-deploy-infra: ## Deploy del CDK stack (correr 2 veces: antes y después de deploy-text-agent)
+deploy-infra: ## Deploy del CDK stack principal (correr 2 veces: antes y después de deploy-text-agent)
 	@cd infrastructure && . .venv/bin/activate && cdk deploy $(STACK) --profile $(AWS_PROFILE) --require-approval never
 
 .PHONY: env-from-outputs
@@ -111,23 +121,22 @@ cdk-diff: ## Ver cambios pendientes en el stack
 # ----------------------------------------------------------------------------
 
 .PHONY: seed
-seed: seed-data seed-peccy ## Cargar CSVs en DynamoDB + crear usuario demo Peccy con sus 12 médicos
+seed: seed-aurora seed-peccy ## Poblar Aurora (seed Lambda) + crear usuario demo Peccy en Cognito
 
 .PHONY: seed-users
 seed-users: ## (Avanzado) Crear un usuario demo adicional con los valores DEMO_USER_* del .env
 	@cd backend && . .venv/bin/activate && python ../scripts/create-demo-user.py
 
-.PHONY: seed-data
-seed-data: ## Cargar los CSVs en DynamoDB (y generar visitas planificadas)
-	@cd backend && . .venv/bin/activate && python -m data.loader \
-		--medicos-table $(MEDICOS_TABLE_NAME) \
-		--visitas-table $(VISITAS_TABLE_NAME) \
-		--ventas-table $(VENTAS_TABLE_NAME) \
-		--planificadas-table $(PLANIFICADAS_TABLE_NAME) \
-		--data-dir .. --year $$(date +%Y)
+.PHONY: seed-aurora
+seed-aurora: ## Poblar Aurora invocando la Lambda de seed del ProduccionPocStack (~5-10 min)
+	@[ -n "$(POC_SEED_LAMBDA_ARN)" ] || (echo "✗ POC_SEED_LAMBDA_ARN vacío. Deployá la capa de datos primero: make deploy-data-layer" && exit 1)
+	@echo "→ Invocando seed Lambda (puebla Aurora con datos sintéticos)..."
+	@aws lambda invoke --function-name $(POC_SEED_LAMBDA_ARN) --payload '{}' \
+		--cli-read-timeout 900 --profile $(AWS_PROFILE) --region $(AWS_REGION) /tmp/poc-seed-response.json >/dev/null
+	@cat /tmp/poc-seed-response.json && echo ""
 
 .PHONY: seed-peccy
-seed-peccy: ## Crear el usuario demo 'Peccy' con 12 médicos + 2 años de visitas
+seed-peccy: ## Crear el usuario demo 'Peccy' en Cognito (custom:apm_id → APM_001 en Aurora)
 	@cd backend && . .venv/bin/activate && python ../scripts/setup_peccy_user.py
 
 # ----------------------------------------------------------------------------
@@ -171,20 +180,25 @@ deploy-all: ## Deploy completo: CDK + env-from-outputs + Text Agent + BidiAgent 
 	@echo "  PharmAssist — Deploy completo (cuenta $$(aws sts get-caller-identity --profile $(AWS_PROFILE) --query Account --output text 2>/dev/null || echo 'unknown'))"
 	@echo "═══════════════════════════════════════════════════════"
 	@echo ""
-	@echo "→ [1/5] Deploying CDK stack..."
+	@echo "→ [1/6] Deploying capa de datos (ProduccionPocStack: VPC + Aurora)..."
+	$(MAKE) deploy-data-layer
+	@echo ""
+	@echo "→ [2/6] Deploying CDK stack principal (PharmAssistStack)..."
 	$(MAKE) deploy-infra
 	@echo ""
-	@echo "→ [2/5] Escribiendo outputs del stack a .env..."
+	@echo "→ [3/6] Escribiendo outputs de ambos stacks a .env..."
 	$(MAKE) env-from-outputs
 	@echo ""
-	@echo "→ [3/5] Deploying Text Agent a AgentCore..."
+	@echo "→ [4/6] Deploying Text Agent (CodeAgent, VPC) a AgentCore..."
 	$(MAKE) deploy-text-agent
 	@echo ""
-	@echo "→ [4/5] Deploying BidiAgent (voz) a AgentCore..."
+	@echo "→ [5/6] Deploying BidiAgent (voz) a AgentCore..."
 	$(MAKE) deploy-bidi-agent
 	@echo ""
-	@echo "→ [5/5] Building + deploying frontend a CloudFront..."
+	@echo "→ [6/6] Building + deploying frontend a CloudFront..."
 	$(MAKE) deploy-frontend
+	@echo ""
+	@echo "  Nota: si es la primera vez, poblá Aurora con 'make seed' (data + usuario Peccy)."
 	@echo ""
 	@echo "✓ Deploy completo exitoso."
 	@echo "  → Frontend: $$(grep VITE_API_URL .env | cut -d= -f2 | head -1)"
@@ -222,8 +236,10 @@ destroy: ## Destruir TODO (agents + stack + buckets). Pedirá confirmación.
 	@cd bidiagent && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
 	@echo "→ [2/3] Destruyendo Text Agent..."
 	@cd agentcore && AWS_PROFILE=$(AWS_PROFILE) agentcore destroy --force --delete-ecr-repo 2>&1 | tail -5 || echo "  (no había agente o no se pudo destruir)"
-	@echo "→ [3/3] Destruyendo CDK stack..."
+	@echo "→ [3/4] Destruyendo CDK stack principal (PharmAssistStack)..."
 	@cd infrastructure && . .venv/bin/activate && cdk destroy $(STACK) --profile $(AWS_PROFILE) --force
+	@echo "→ [4/4] Destruyendo capa de datos (ProduccionPocStack: Aurora + VPC + NAT)..."
+	@cd produccion-poc/infrastructure && . .venv/bin/activate && cdk destroy ProduccionPocStack --profile $(AWS_PROFILE) --force 2>&1 | tail -5 || echo "  (no estaba deployado o no se pudo destruir)"
 	@echo "→ Limpiando memorias AgentCore huérfanas..."
 	@bash scripts/cleanup-orphan-memories.sh || true
 	@echo "✓ Destrucción completa."

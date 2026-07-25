@@ -27,7 +27,7 @@ Respuesta:
     }
 
 Configuración via env vars:
-    - BEDROCK_MODEL_ID: Inference profile ID (default: us.anthropic.claude-sonnet-4-20250514-v1:0)
+    - BEDROCK_MODEL_ID: Inference profile ID (default: us.anthropic.claude-sonnet-5)
     - AWS_REGION: Región AWS (default: us-east-1)
     - DB_SECRET_ARN: ARN de Secrets Manager con credenciales Aurora PostgreSQL
     - MINUTAS_TABLE_NAME: Tabla DynamoDB para minutas de visitas
@@ -95,7 +95,7 @@ class UnifiedAgentConfig:
     """
 
     model_id: str = field(default_factory=lambda: os.environ.get(
-        "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-4-20250514-v1:0"
+        "BEDROCK_MODEL_ID", "us.anthropic.claude-sonnet-5"
     ))
     region: str = field(default_factory=lambda: os.environ.get(
         "AWS_REGION", "us-east-1"
@@ -176,10 +176,12 @@ def _get_or_create_agent():
         )
         from prompts import build_system_prompt
 
+    # Nota: Claude Sonnet 5 (y otros modelos de razonamiento nuevos) deprecaron
+    # el parámetro `temperature`. Se omite para ser compatible con esos modelos;
+    # los modelos que lo soportan usan su valor por defecto.
     model = BedrockModel(
         model_id=config.model_id,
         region_name=config.region,
-        temperature=0.3,
         max_tokens=4096,
     )
 

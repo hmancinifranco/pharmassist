@@ -448,7 +448,7 @@ CREATE TABLE "UltimaMillaMarca" (
     "idMedicoCUP" VARCHAR(20) NOT NULL,
     "idMarca" VARCHAR(20) NOT NULL,
     "idMercado" VARCHAR(20),
-    "idLaboratorio" VARCHAR(10),  -- 'ELE' para Elea
+    "idLaboratorio" VARCHAR(10),  -- 'ELE' = laboratorio propio
     "marcaNombre" VARCHAR(100),
     "ShareMarcaMercado" DECIMAL(10,4),
     "ShareMarcaMes" DECIMAL(10,4),
@@ -941,7 +941,7 @@ def test_single_question(agent: CodeAgent, question: str) -> dict:
 # Test
 result = test_single_question(
     agent, 
-    "¿En qué productos de ELEA tengo EVO TRM negativa?"
+    "¿En qué productos propios tengo EVO TRM negativa?"
 )
 print(f"Latencia: {result['latency_ms']}ms, Éxito: {result['success']}")
 print(f"Respuesta: {result['response'][:200]}...")

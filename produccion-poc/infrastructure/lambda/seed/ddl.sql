@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS "UltimaMillaMarca" (
     "idMedicoCUP" VARCHAR(20) NOT NULL,
     "idMarca" VARCHAR(20) NOT NULL,
     "idMercado" VARCHAR(20),
-    "idLaboratorio" VARCHAR(10),         -- 'ELE' para Elea (laboratorio propio)
+    "idLaboratorio" VARCHAR(10),         -- 'ELE' = laboratorio propio; LAB_A..LAB_E = competencia
     "marcaNombre" VARCHAR(100),
     "ShareMarcaMercado" DECIMAL(10,4),
     "ShareMarcaMes" DECIMAL(10,4),
@@ -218,7 +218,7 @@ CREATE INDEX IF NOT EXISTS idx_agenda_doctor
 CREATE INDEX IF NOT EXISTS idx_ultima_milla_marca_medico
     ON "UltimaMillaMarca"("idMedicoCUP", "idMarca");
 
--- UltimaMillaMarca: búsqueda por laboratorio + médico (filtro ELE)
+-- UltimaMillaMarca: búsqueda por laboratorio + médico (filtro laboratorio propio)
 CREATE INDEX IF NOT EXISTS idx_ultima_milla_marca_lab
     ON "UltimaMillaMarca"("idLaboratorio", "idMedicoCUP");
 
@@ -241,8 +241,10 @@ CREATE INDEX IF NOT EXISTS idx_ultima_milla_medico_apx
 
 -- =============================================================================
 -- USUARIO READ-ONLY PARA EL CODEAGENT
--- El CodeAgent se conecta con permisos mínimos (SELECT only).
--- La contraseña es un placeholder — se reemplaza en runtime via Secrets Manager.
+-- Rol con permisos mínimos (SELECT only) usado como defensa en profundidad:
+-- incluso si el LLM generara SQL destructivo, el rol no puede ejecutarlo.
+-- La contraseña de abajo es un PLACEHOLDER para que este archivo sea versionable:
+-- seed_handler.py la reemplaza por un valor aleatorio antes de ejecutar el DDL.
 -- =============================================================================
 
 CREATE USER codeagent_readonly WITH PASSWORD 'readonly_password_placeholder';

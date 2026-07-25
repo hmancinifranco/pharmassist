@@ -15,14 +15,14 @@
 #   - `agentcore` CLI instalado (pip install bedrock-agentcore-starter-toolkit)
 #   - Aurora security group acepta ingress desde AgentCore SG en port 5432
 #
-# Networking (VPC del POC ProduccionPocStack):
-#   - VPC: vpc-09a9d2d63c4486091
-#   - Security Group: sg-06a114932a8ffd8be (egress → Aurora RDS:5432, 443 → 0.0.0.0/0)
-#   - Subnet (private): subnet-09cde5f1fbdc98fe7
+# Networking (VPC del ProduccionPocStack — IDs propios de cada cuenta, via .env):
+#   - VPC:                $POC_VPC_ID
+#   - Security Group:     $AGENTCORE_VPC_SG   (egress → Aurora:5432, 443 → 0.0.0.0/0)
+#   - Subnet (private):   $AGENTCORE_VPC_SUBNET
 #
 # Security Group Rules requeridas:
 #   ┌─────────────────────────────────────────────────────────────────┐
-#   │ AgentCore SG (sg-06a114932a8ffd8be):                           │
+#   │ AgentCore SG ($AGENTCORE_VPC_SG):                               │
 #   │   Egress:                                                       │
 #   │     - TCP 5432 → Aurora SG (acceso a Aurora PostgreSQL)         │
 #   │     - TCP 443  → 0.0.0.0/0 (Bedrock, DynamoDB, Secrets Mgr,   │
@@ -30,7 +30,7 @@
 #   │                                                                 │
 #   │ Aurora SG (del ProduccionPocStack):                             │
 #   │   Ingress:                                                      │
-#   │     - TCP 5432 from AgentCore SG (sg-06a114932a8ffd8be)        │
+#   │     - TCP 5432 from AgentCore SG                                │
 #   └─────────────────────────────────────────────────────────────────┘
 #
 # Requirements: 17.2, 17.3, 18.1, 18.2, 18.4
@@ -53,11 +53,12 @@ export AWS_PROFILE="${AWS_PROFILE:-default}"
 
 # --- Configuration ---
 AGENTCORE_REGION="${AGENTCORE_REGION:-${AWS_REGION:-us-east-1}}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-4-20250514-v1:0}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-5}"
 
-# VPC Configuration (from ProduccionPocStack)
-AGENTCORE_VPC_SUBNET="${AGENTCORE_VPC_SUBNET:-subnet-09cde5f1fbdc98fe7}"
-AGENTCORE_VPC_SG="${AGENTCORE_VPC_SG:-sg-06a114932a8ffd8be}"
+# VPC Configuration (from ProduccionPocStack outputs — ver scripts/env-from-outputs.sh)
+# No hay defaults: los IDs de subnet/SG son propios de cada cuenta.
+AGENTCORE_VPC_SUBNET="${AGENTCORE_VPC_SUBNET:-}"
+AGENTCORE_VPC_SG="${AGENTCORE_VPC_SG:-}"
 
 # Idle session timeout: 900 seconds (15 minutes) per Requirement 18.4
 IDLE_SESSION_TIMEOUT=900
@@ -68,19 +69,27 @@ REQUIRED_VARS=(
   AWS_REGION
   DB_SECRET_ARN
   MINUTAS_TABLE_NAME
-  AGENTCORE_MEMORY_ID
+  AGENTCORE_VPC_SUBNET
+  AGENTCORE_VPC_SG
 )
 
 echo "→ Validando variables de entorno requeridas..."
 for v in "${REQUIRED_VARS[@]}"; do
   if [ -z "${!v:-}" ]; then
     echo "✗ Variable $v está vacía o no definida en .env"
-    echo "  Para DB_SECRET_ARN usar el valor de POC_AURORA_SECRET_ARN del .env"
-    echo "  Para AGENTCORE_MEMORY_ID usar el valor creado con agentcore memory"
+    echo "  Corré 'make env-from-outputs' para poblarlas desde los outputs del stack."
+    echo "  Nota: DB_SECRET_ARN = POC_AURORA_SECRET_ARN."
     exit 1
   fi
 done
 echo "  ✓ Todas las variables requeridas presentes."
+
+# AGENTCORE_MEMORY_ID es opcional: sin él el agente responde igual pero no
+# conserva el hilo conversacional entre turnos.
+if [ -z "${AGENTCORE_MEMORY_ID:-}" ]; then
+  echo "⚠️  AGENTCORE_MEMORY_ID vacío — deploy sin memoria conversacional."
+  echo "    Para habilitarla: 'agentcore memory create' y agregar el ID al .env."
+fi
 
 # --- Change to agentcore directory ---
 cd "$PROJECT_ROOT/agentcore"

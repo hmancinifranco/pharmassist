@@ -178,7 +178,7 @@ def _build_model() -> BedrockModel:
     return BedrockModel(
         model_id=os.environ.get(
             "BEDROCK_MODEL_ID",
-            "us.anthropic.claude-opus-4-6-v1",
+            "us.anthropic.claude-sonnet-5",
         ),
         region_name=os.environ.get("AWS_REGION", "us-east-1"),
         temperature=0.3,

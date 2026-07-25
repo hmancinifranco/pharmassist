@@ -29,20 +29,29 @@ set +a
 
 export AWS_PROFILE="${AWS_PROFILE:-default}"
 AGENTCORE_REGION="${AGENTCORE_REGION:-${AWS_REGION:-us-east-1}}"
-BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
+BEDROCK_MODEL_ID="${BEDROCK_MODEL_ID:-us.anthropic.claude-sonnet-5}"
 
-# VPC Configuration (from ProduccionPocStack / .env)
-AGENTCORE_VPC_SUBNET="${AGENTCORE_VPC_SUBNET:-subnet-09cde5f1fbdc98fe7}"
-AGENTCORE_VPC_SG="${AGENTCORE_VPC_SG:-sg-06a114932a8ffd8be}"
+# VPC Configuration (from ProduccionPocStack outputs — ver scripts/env-from-outputs.sh)
+# No hay defaults: los IDs de subnet/SG son propios de cada cuenta.
+AGENTCORE_VPC_SUBNET="${AGENTCORE_VPC_SUBNET:-}"
+AGENTCORE_VPC_SG="${AGENTCORE_VPC_SG:-}"
 
 # Validate required env vars for VPC deployment
-REQUIRED_VARS=(DB_SECRET_ARN MINUTAS_TABLE_NAME AGENTCORE_MEMORY_ID)
+REQUIRED_VARS=(DB_SECRET_ARN MINUTAS_TABLE_NAME AGENTCORE_VPC_SUBNET AGENTCORE_VPC_SG)
 for v in "${REQUIRED_VARS[@]}"; do
   if [ -z "${!v:-}" ]; then
-    echo "✗ Variable $v vacía. Verificá .env (DB_SECRET_ARN = POC_AURORA_SECRET_ARN)."
+    echo "✗ Variable $v vacía. Corré 'make env-from-outputs' (deployá antes la capa de datos)."
+    echo "  Nota: DB_SECRET_ARN = POC_AURORA_SECRET_ARN."
     exit 1
   fi
 done
+
+# AGENTCORE_MEMORY_ID es opcional: sin él el agente funciona pero no conserva
+# el hilo de la conversación entre turnos (memory_manager lo omite y avisa).
+if [ -z "${AGENTCORE_MEMORY_ID:-}" ]; then
+  echo "⚠️  AGENTCORE_MEMORY_ID vacío — el agente se despliega sin memoria conversacional."
+  echo "    Para habilitarla, creá el recurso con 'agentcore memory create' y agregalo al .env."
+fi
 
 cd "$PROJECT_ROOT/agentcore"
 

@@ -11,8 +11,15 @@ docs/road-to-prod.template.html
 docs/PRESENTACION.md
 docs/reviews/
 .kiro/kiro-aws-blueprint
+.kiro/settings/mcp.json
+.kiro/agents/
+.kiro/.DS_Store
+.kiro/**/.DS_Store
 docs/DescripcionesTablas.docx
 docs/Preguntas con Prioridades y Origen - Comentarios.docx
+# Material de origen cliente (diagramas ER, queries de producción, docs internos).
+# Se mantiene local para desarrollo, no se publica.
+docs/customer-docs/
 
 # === Python ===
 __pycache__/
@@ -73,3 +80,8 @@ e2e/node_modules/
 e2e/test-results/
 e2e/playwright-report/
 e2e/screenshots/*.png
+
+# === Artefactos generados / no versionar ===
+.kiro/steering.zip
+# Resultados de smoke tests (generados, contienen ARNs con account ID)
+**/smoke_test_results.json

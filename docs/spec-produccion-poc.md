@@ -358,7 +358,7 @@ APM pregunta: "Recomendame a qué médicos debería visitar según sus prescripc
 | idMedicoCUP | VARCHAR | |
 | idMarca | VARCHAR | ID marca en CUP |
 | idMercado | VARCHAR | |
-| idLaboratorio | VARCHAR | 'ELE' para Elea |
+| idLaboratorio | VARCHAR | `'ELE'` = laboratorio propio; `LAB_A`..`LAB_E` = competencia |
 | marcaNombre | VARCHAR | |
 | ShareMarcaMercado | DECIMAL | Share de la marca en su mercado |
 | ShareMarcaMes | DECIMAL | |
@@ -430,14 +430,14 @@ APM pregunta: "Recomendame a qué médicos debería visitar según sus prescripc
 2. "Qué médicos vienen creciendo en prescripción de mis productos foco y los estoy visitando poco?"
 3. "A qué médicos debería visitar primero para crecer con las prescripciones del producto X"
 4. "Cuales son los 10 médicos más prescriptores en X mercado?"
-5. "En qué productos de ELEA tengo EVO TRM negativa?"
+5. "En qué productos propios tengo EVO TRM negativa?"
 6. "En qué médicos tengo EVO TRM negativa?"
 
 ### Categoría 2: Análisis de Promoción
 7. "De los medicamentos que no le promociono a X médico, cuál es el que más prescribe?"
 8. "De los medicamentos que sí le promociono a X médico, cuál es el que más prescribe?"
 9. "Cuales son los 5 productos que más prescribe X médico?"
-10. "Cuales son los 5 productos de Elea que más prescribe X médico?"
+10. "Cuales son los 5 productos propios que más prescribe X médico?"
 
 ### Categoría 3: Gestión de Visitas
 11. "Cuales son mis objetivos de visita este mes?"

@@ -233,3 +233,24 @@ class ProduccionPocStack(cdk.Stack):
             description="ARN of the seed data Lambda function",
             export_name=f"{self.stack_name}-SeedLambdaArn",
         )
+        # Networking para el deploy de AgentCore en modo VPC.
+        # El agente reusa el LambdaSg: tiene outbound abierto y Aurora ya acepta
+        # ingress desde él en el 5432.
+        cdk.CfnOutput(
+            self,
+            "AgentSecurityGroupId",
+            value=self.lambda_sg.security_group_id,
+            description="Security group para AgentCore en modo VPC (AGENTCORE_VPC_SG)",
+            export_name=f"{self.stack_name}-AgentSecurityGroupId",
+        )
+        cdk.CfnOutput(
+            self,
+            "PrivateSubnetIds",
+            value=",".join(
+                self.vpc.select_subnets(
+                    subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS
+                ).subnet_ids
+            ),
+            description="Subnets privadas con egress (AGENTCORE_VPC_SUBNET)",
+            export_name=f"{self.stack_name}-PrivateSubnetIds",
+        )
